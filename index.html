@@ -20,7 +20,7 @@
               'secondary': 'var(--color-secondary)',
               'border-default': 'var(--color-border-default)',
               'accent': 'var(--color-accent)',
-              'card-bg': 'var(--color-card-bg)', // 用于卡片背景，深色模式和部分光线模式可能不同
+              'card-bg': 'var(--color-card-bg)', // 用于卡片背景
               
               // 固定的语义化颜色 (不随主题变化，除非你为它们也定义了变量)
               success: '#48bb78', 
@@ -52,10 +52,12 @@
 
       /* --- CSS 变量定义：根据不同的主题类切换颜色 --- */
 
-      /* 默认光线模式 (light-theme-default) */
-      html { /* 默认应用于无类名时 */
-        --color-bg-default: #f9fafb; /* bg-gray-50 */
-        --color-text-default: #1e293b; /* text-slate-900 */
+      /* 基础光线模式：所有光线模式共用此页面背景和主要文本颜色 */
+      html {
+        --color-bg-default: #f9fafb; /* 页面默认背景色 (所有光线模式相同) */
+        --color-text-default: #1e293b; /* 页面默认文本色 (所有光线模式相同) */
+        
+        /* 默认光线模式的组件颜色 */
         --color-primary: #3b82f6; /* blue-500 */
         --color-secondary: #64748b; /* slate-600 */
         --color-border-default: #e2e8f0; /* slate-200 */
@@ -63,7 +65,7 @@
         --color-card-bg: #ffffff; /* white */
       }
 
-      /* 深色模式 (dark) */
+      /* 深色模式：覆盖所有颜色变量 */
       html.dark {
         --color-bg-default: #0f172a; /* slate-900 */
         --color-text-default: #f8fafc; /* slate-50 */
@@ -74,10 +76,8 @@
         --color-card-bg: #1e293b; /* slate-800 */
       }
 
-      /* 光线模式 1: 默认 (light-theme-default) - 显式定义，以便在主题列表中引用 */
+      /* 光线模式 1: 默认 (light-theme-default) - 仅需覆盖组件颜色，页面背景和文本继承自 `html` */
       html.light-theme-default {
-        --color-bg-default: #f9fafb;
-        --color-text-default: #1e293b;
         --color-primary: #3b82f6;
         --color-secondary: #64748b;
         --color-border-default: #e2e8f0;
@@ -87,8 +87,6 @@
 
       /* 光线模式 2: 暖色调 (Warm Light) */
       html.light-theme-warm {
-        --color-bg-default: #fffaf0; /* beige-50 */
-        --color-text-default: #4a2c00; /* brown-900 */
         --color-primary: #d97706; /* orange-700 */
         --color-secondary: #78350f; /* amber-900 */
         --color-border-default: #fde68a; /* amber-200 */
@@ -98,8 +96,6 @@
 
       /* 光线模式 3: 冷色调 (Cool Light) */
       html.light-theme-cool {
-        --color-bg-default: #f0f9ff; /* blue-50 */
-        --color-text-default: #0c4a6e; /* sky-900 */
         --color-primary: #0ea5e9; /* sky-500 */
         --color-secondary: #38bdf8; /* sky-400 */
         --color-border-default: #bae6fd; /* sky-200 */
@@ -109,8 +105,6 @@
 
       /* 光线模式 4: 极简 (Minimal Light) */
       html.light-theme-minimal {
-        --color-bg-default: #ffffff; /* white */
-        --color-text-default: #1f2937; /* gray-800 */
         --color-primary: #10b981; /* emerald-500 */
         --color-secondary: #6b7280; /* gray-500 */
         --color-border-default: #d1d5db; /* gray-300 */
@@ -120,8 +114,6 @@
 
       /* 光线模式 5: 柔和 (Soft Pastel) */
       html.light-theme-soft {
-        --color-bg-default: #fefce8; /* yellow-50 */
-        --color-text-default: #4c0519; /* rose-900 */
         --color-primary: #f472b6; /* pink-400 */
         --color-secondary: #f9a8d4; /* pink-300 */
         --color-border-default: #fbcfe8; /* pink-200 */
@@ -181,67 +173,75 @@
     body 的背景和文本颜色现在使用我们自定义的语义化颜色别名，它们的值由 CSS 变量决定。
     transition-colors duration-300 让颜色切换更平滑。
 -->
-<body class="bg-bg-default text-text-default transition-colors duration-300 min-h-screen p-8">
-    <!-- 模式切换按钮，固定在右上角 -->
-    <div class="fixed top-4 right-4 z-50">
-        <button id="theme-toggle" 
-                class="p-2 rounded-full 
-                       bg-primary text-white 
-                       hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-75
-                       transition-all duration-300 shadow-lg">
-            <!-- SVG 图标会由 JavaScript 动态插入或切换 -->
-            <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <!-- 初始图标占位符，JS会替换 -->
-            </svg>
-        </button>
-    </div>
+<body class="bg-bg-default text-text-default transition-colors duration-300 min-h-screen">
+    <div class="flex h-screen">
+        <!-- 侧边栏 (模拟导航菜单区域) -->
+        <aside class="w-64 bg-card-bg border-r border-border-default p-4 flex flex-col shadow-lg">
+            <h2 class="text-xl font-bold text-primary mb-6">云航导航</h2>
+            <ul class="space-y-2">
+                <li><a href="#" class="block p-2 rounded-md text-text-default hover:bg-secondary hover:text-white transition-colors">首页</a></li>
+                <li><a href="#" class="block p-2 rounded-md text-text-default hover:bg-secondary hover:text-white transition-colors">我的书签</a></li>
+                <li><a href="#" class="block p-2 rounded-md text-text-default hover:bg-secondary hover:text-white transition-colors">设置</a></li>
+            </ul>
+            <div class="mt-auto pt-4 border-t border-border-default">
+                <!-- "添加书签" 按钮，现在也作为主题切换器 -->
+                <button id="theme-toggle" class="w-full flex items-center justify-center p-2 rounded-md bg-primary text-white hover:bg-opacity-90 transition-colors shadow-md">
+                    <svg id="theme-icon" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 初始图标占位符，JS会替换 -->
+                    </svg>
+                    添加书签
+                </button>
+                <p class="text-sm text-secondary mt-2 text-center">当前主题：<span id="current-mode-display" class="font-medium"></span></p>
+            </div>
+        </aside>
 
-    <div id="root" class="max-w-4xl mx-auto">
-        <!-- 这是一个占位符内容，用于在 React 应用加载前或无 React 内容时展示主题切换效果 -->
-        <div class="p-8 bg-card-bg rounded-lg shadow-md border border-border-default">
-            <h1 class="text-3xl font-bold text-primary mb-4 text-center">
-                云航 CloudNav (多主题演示)
-            </h1>
-            <p class="text-secondary mb-6 text-center">
-                点击右上角的按钮，循环切换深色模式和五种光线模式。
-            </p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- 卡片 1 -->
-                <div class="p-6 bg-bg-default rounded-lg shadow-inner border border-border-default">
-                    <h2 class="text-xl font-semibold text-primary mb-3">卡片标题 1</h2>
-                    <p class="text-text-default mb-4">
-                        这是卡片内容，使用默认背景和文本颜色。
-                    </p>
-                    <div class="flex items-center space-x-2">
-                        <span class="px-3 py-1 rounded-full bg-accent text-white text-sm">标签 1</span>
-                        <span class="px-3 py-1 rounded-full bg-secondary text-white text-sm">标签 2</span>
-                    </div>
+        <!-- 主内容区域 -->
+        <main class="flex-1 p-8 overflow-y-auto">
+            <h1 class="text-3xl font-bold text-primary mb-6">我的书签</h1>
+            <p class="text-secondary mb-8">点击左侧“添加书签”按钮，切换深色模式和五种光线模式。</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 示例书签卡片 1 -->
+                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default">
+                    <h3 class="text-xl font-semibold text-primary mb-2">Google 搜索</h3>
+                    <p class="text-secondary mb-4">全球领先的搜索引擎，快速查找信息。</p>
+                    <a href="https://google.com" target="_blank" class="inline-block px-4 py-2 bg-accent text-white rounded-md hover:opacity-90 transition-opacity">访问网站</a>
                 </div>
 
-                <!-- 卡片 2 -->
-                <div class="p-6 bg-bg-default rounded-lg shadow-inner border border-border-default">
-                    <h2 class="text-xl font-semibold text-primary mb-3">卡片标题 2</h2>
-                    <p class="text-text-default mb-4">
-                        另一个卡片，展示了不同的颜色元素。
-                    </p>
-                    <div class="flex items-center space-x-2">
-                        <button class="px-4 py-2 rounded-md bg-primary text-white text-sm hover:opacity-90">主要操作</button>
-                        <button class="px-4 py-2 rounded-md bg-secondary text-white text-sm hover:opacity-90">次要操作</button>
-                    </div>
+                <!-- 示例书签卡片 2 -->
+                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default">
+                    <h3 class="text-xl font-semibold text-primary mb-2">GitHub 代码托管</h3>
+                    <p class="text-secondary mb-4">开发者社区和代码协作平台。</p>
+                    <a href="https://github.com" target="_blank" class="inline-block px-4 py-2 bg-accent text-white rounded-md hover:opacity-90 transition-opacity">访问网站</a>
+                </div>
+
+                <!-- 示例书签卡片 3 -->
+                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default">
+                    <h3 class="text-xl font-semibold text-primary mb-2">Tailwind CSS</h3>
+                    <p class="text-secondary mb-4">一个实用至上的 CSS 框架，用于快速构建自定义 UI。</p>
+                    <a href="https://tailwindcss.com" target="_blank" class="inline-block px-4 py-2 bg-accent text-white rounded-md hover:opacity-90 transition-opacity">访问网站</a>
+                </div>
+
+                <!-- 更多书签卡片占位符 -->
+                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default text-center flex items-center justify-center">
+                    <p class="text-secondary">在此处添加更多书签...</p>
                 </div>
             </div>
 
-            <!-- 状态信息 -->
-            <div class="mt-6 p-4 border border-border-default rounded-md bg-bg-default">
-                <p class="text-lg text-text-default">
-                    当前主题：<span id="current-mode-display" class="font-medium text-primary"></span>
-                </p>
-                <p class="text-sm text-secondary mt-2">
-                    这是一个使用 `bg-bg-default` 和 `text-secondary` 的信息区域。
-                </p>
+            <!-- 其他面板内容示例 -->
+            <div class="mt-8 p-6 bg-card-bg rounded-lg shadow-md border border-border-default">
+                <h3 class="text-xl font-semibold text-primary mb-3">设置面板</h3>
+                <p class="text-secondary mb-4">这是一个模拟的设置区域，其颜色也会随主题变化。</p>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" class="form-checkbox h-5 w-5 text-primary rounded" checked>
+                        <span class="ml-2 text-text-default">启用通知</span>
+                    </label>
+                    <button class="px-4 py-2 rounded-md bg-primary text-white hover:opacity-90 transition-opacity">保存设置</button>
+                    <button class="px-4 py-2 rounded-md bg-secondary text-white hover:opacity-90 transition-opacity">取消</button>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- 您的 React 应用入口脚本 -->
@@ -267,7 +267,9 @@
         let currentThemeIndex = 0; // 初始主题索引
 
         // --- SVG 图标定义 ---
+        // 太阳图标 (表示当前是光线模式，点击后将切换到深色模式)
         const sunIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
+        // 月亮图标 (表示当前是深色模式，点击后将切换到光线模式)
         const moonIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
 
         // --- 辅助函数：更新按钮图标和显示文本 ---
@@ -280,10 +282,11 @@
             htmlElement.classList.add(currentTheme.class);
             localStorage.setItem('theme', currentTheme.class); // 保存当前主题
 
+            // 根据当前主题是否为深色来显示图标
             if (currentTheme.isDark) {
-                themeIcon.innerHTML = sunIcon; // 深色模式显示太阳图标 (点击切换到光线)
+                themeIcon.innerHTML = sunIcon; // 如果当前是深色，显示太阳图标 (表示点击后会切换到光线模式)
             } else {
-                themeIcon.innerHTML = moonIcon; // 光线模式显示月亮图标 (点击切换到深色)
+                themeIcon.innerHTML = moonIcon; // 如果当前是光线，显示月亮图标 (表示点击后会切换到深色模式)
             }
             currentModeDisplay.textContent = currentTheme.name;
         }
