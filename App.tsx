@@ -1,21 +1,20 @@
-// src/App.tsx
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Search, Plus, Upload, Moon, Sun, Menu,
   Trash2, Edit2, Loader2, Cloud, CheckCircle2, AlertCircle,
-  Pin, Settings, Lock, CloudCog, Github, GitFork, Info // <-- 新增 Info 图标
+  Pin, Settings, Lock, CloudCog, Github, GitFork, Info // <-- 确保 Info 图标已导入
 } from 'lucide-react';
 import { LinkItem, Category, DEFAULT_CATEGORIES, INITIAL_LINKS, WebDavConfig, AIConfig } from './types';
 import { parseBookmarks } from './services/bookmarkParser';
-import Icon from './components/Icon';
-import LinkModal from './components/LinkModal';
-import AuthModal from './components/AuthModal';
-import CategoryManagerModal from './components/CategoryManagerModal';
-import BackupModal from './components/BackupModal';
-import CategoryAuthModal from './components/CategoryAuthModal';
-import ImportModal from './components/ImportModal';
-import SettingsModal from './components/SettingsModal';
-import DescriptionModal from './components/DescriptionModal';
+import Icon from './components/Icon'; // 确保 Icon 组件存在
+import LinkModal from './components/LinkModal'; // 确保 LinkModal 组件存在
+import AuthModal from './components/AuthModal'; // 确保 AuthModal 组件存在
+import CategoryManagerModal from './components/CategoryManagerModal'; // 确保 CategoryManagerModal 组件存在
+import BackupModal from './components/BackupModal'; // 确保 BackupModal 组件存在
+import CategoryAuthModal from './components/CategoryAuthModal'; // 确保 CategoryAuthModal 组件存在
+import ImportModal from './components/ImportModal'; // 确保 ImportModal 组件存在
+import SettingsModal from './components/SettingsModal'; // 确保 SettingsModal 组件存在
+import DescriptionModal from './components/DescriptionModal'; // <-- 确保 DescriptionModal 组件存在
 
 // --- 导入设备检测工具 ---
 import { isMobileDevice } from './utils/deviceDetection';
@@ -415,8 +414,6 @@ function App() {
     const isLongPressTouchActivatedRef = useRef(false); // 标记是否长按已激活，用于阻止默认点击
 
     const handleTouchStart = (e: React.TouchEvent) => {
-      // 阻止默认的上下文菜单（iOS）
-      // e.preventDefault(); // 暂时不阻止，让浏览器决定是否弹出默认菜单
       isLongPressTouchActivatedRef.current = false; // 重置长按状态
       longPressTouchTimerRef.current = setTimeout(() => {
         // 触发长按：显示操作菜单
@@ -530,7 +527,7 @@ function App() {
               </h3>
               {/* 桌面端保留悬浮显示描述 (使用 Tailwind CSS 的响应式工具类) */}
               {link.description && !isMobile && (
-                 <div className="tooltip-custom absolute left-0 -top-8 w-max max-w-[200px] bg-black text-white text-xs p-2 rounded opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-20 pointer-events-none truncate">
+                 <div className="absolute left-0 -top-8 w-max max-w-[200px] bg-black text-white text-xs p-2 rounded opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-20 pointer-events-none truncate">
                     {link.description}
                  </div>
               )}
