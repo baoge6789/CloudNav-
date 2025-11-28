@@ -8,25 +8,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        darkMode: 'class', // 确保这里是 'class'
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
-              // --- 使用 CSS 变量作为颜色定义 ---
-              // 这些 Tailwind 类将从 HTML 元素上定义的 CSS 变量获取实际颜色值
-              'bg-default': 'var(--color-bg-default)',
-              'text-default': 'var(--color-text-default)',
-              'primary': 'var(--color-primary)',
-              'secondary': 'var(--color-secondary)',
-              'border-default': 'var(--color-border-default)',
-              'accent': 'var(--color-accent)',
-              'card-bg': 'var(--color-card-bg)', // 用于卡片背景，深色模式和部分光线模式可能不同
-              
-              // 固定的语义化颜色 (不随主题变化，除非你为它们也定义了变量)
-              success: '#48bb78', 
-              warning: '#ecc94b', 
-              danger: '#f56565',  
-              info: '#4299e1',
+              primary: '#3b82f6',
+              secondary: '#64748b',
+              dark: '#0f172a',
+              card: '#1e293b',
             }
           }
         }
@@ -49,85 +38,6 @@
           transition: opacity 0.2s, visibility 0.2s;
           pointer-events: none;
       }
-
-      /* --- CSS 变量定义：根据不同的主题类切换颜色 --- */
-
-      /* 默认光线模式 (light-theme-default) */
-      html {
-        --color-bg-default: #f9fafb; /* bg-gray-50 */
-        --color-text-default: #1e293b; /* text-slate-900 */
-        --color-primary: #3b82f6; /* blue-500 */
-        --color-secondary: #64748b; /* slate-600 */
-        --color-border-default: #e2e8f0; /* slate-200 */
-        --color-accent: #f6ad55; /* orange-400 */
-        --color-card-bg: #ffffff; /* white */
-      }
-
-      /* 深色模式 (dark) */
-      html.dark {
-        --color-bg-default: #0f172a; /* slate-900 */
-        --color-text-default: #f8fafc; /* slate-50 */
-        --color-primary: #60a5fa; /* blue-400 */
-        --color-secondary: #94a3b8; /* slate-400 */
-        --color-border-default: #475569; /* slate-700 */
-        --color-accent: #fbd38d; /* yellow-200 */
-        --color-card-bg: #1e293b; /* slate-800 */
-      }
-
-      /* 光线模式 1: 默认 (与上面的 html 默认值相同，但显式定义) */
-      html.light-theme-default {
-        --color-bg-default: #f9fafb;
-        --color-text-default: #1e293b;
-        --color-primary: #3b82f6;
-        --color-secondary: #64748b;
-        --color-border-default: #e2e8f0;
-        --color-accent: #f6ad55;
-        --color-card-bg: #ffffff;
-      }
-
-      /* 光线模式 2: 暖色调 (Warm Light) */
-      html.light-theme-warm {
-        --color-bg-default: #fffaf0; /* beige-50 */
-        --color-text-default: #4a2c00; /* brown-900 */
-        --color-primary: #d97706; /* orange-700 */
-        --color-secondary: #78350f; /* amber-900 */
-        --color-border-default: #fde68a; /* amber-200 */
-        --color-accent: #fcd34d; /* amber-300 */
-        --color-card-bg: #fef3c7; /* amber-100 */
-      }
-
-      /* 光线模式 3: 冷色调 (Cool Light) */
-      html.light-theme-cool {
-        --color-bg-default: #f0f9ff; /* blue-50 */
-        --color-text-default: #0c4a6e; /* sky-900 */
-        --color-primary: #0ea5e9; /* sky-500 */
-        --color-secondary: #38bdf8; /* sky-400 */
-        --color-border-default: #bae6fd; /* sky-200 */
-        --color-accent: #7dd3fc; /* sky-300 */
-        --color-card-bg: #e0f2fe; /* sky-100 */
-      }
-
-      /* 光线模式 4: 极简 (Minimal Light) */
-      html.light-theme-minimal {
-        --color-bg-default: #ffffff; /* white */
-        --color-text-default: #1f2937; /* gray-800 */
-        --color-primary: #10b981; /* emerald-500 */
-        --color-secondary: #6b7280; /* gray-500 */
-        --color-border-default: #d1d5db; /* gray-300 */
-        --color-accent: #34d399; /* emerald-400 */
-        --color-card-bg: #f9fafb; /* gray-50 */
-      }
-
-      /* 光线模式 5: 柔和 (Soft Pastel) */
-      html.light-theme-soft {
-        --color-bg-default: #fefce8; /* yellow-50 */
-        --color-text-default: #4c0519; /* rose-900 */
-        --color-primary: #f472b6; /* pink-400 */
-        --color-secondary: #f9a8d4; /* pink-300 */
-        --color-border-default: #fbcfe8; /* pink-200 */
-        --color-accent: #fda4af; /* rose-300 */
-        --color-card-bg: #ffe4e6; /* rose-100 */
-      }
     </style>
   <script type="importmap">
 {
@@ -143,142 +53,9 @@
 }
 </script>
 <link rel="stylesheet" href="/index.css">
-
-    <!-- *** START: FOUC Prevention Script (防止页面加载时闪烁) *** -->
-    <script>
-        (function() {
-            const storedTheme = localStorage.getItem('theme');
-            const lightThemes = ['light-theme-default', 'light-theme-warm', 'light-theme-cool', 'light-theme-minimal', 'light-theme-soft'];
-            
-            let initialTheme = 'light-theme-default'; // 默认主题
-
-            if (storedTheme) {
-                initialTheme = storedTheme;
-            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                initialTheme = 'dark'; // 如果系统偏好深色，则设置为深色
-            }
-
-            // 移除所有可能的主题类，然后添加初始主题类
-            document.documentElement.classList.remove('dark', ...lightThemes);
-            document.documentElement.classList.add(initialTheme);
-        })();
-    </script>
-    <!-- *** END: FOUC Prevention Script *** -->
-
 </head>
-<!-- 
-    body 的背景和文本颜色现在使用我们自定义的语义化颜色别名，它们的值由 CSS 变量决定。
-    transition-colors duration-300 让颜色切换更平滑。
--->
-<body class="bg-bg-default text-text-default transition-colors duration-300">
-    <!-- 模式切换按钮，固定在右上角 -->
-    <div class="fixed top-4 right-4 z-50">
-        <button id="theme-toggle" 
-                class="p-2 rounded-full 
-                       bg-primary text-white 
-                       hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-75
-                       transition-all duration-300 shadow-lg">
-            <!-- SVG 图标会由 JavaScript 动态插入或切换 -->
-            <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <!-- 初始图标占位符，JS会替换 -->
-            </svg>
-        </button>
-    </div>
-
-    <div id="root">
-        <!-- 这是一个占位符内容，用于在 React 应用加载前或无 React 内容时展示主题切换效果 -->
-        <div class="p-8 text-center bg-card-bg rounded-lg shadow-md max-w-md mx-auto mt-20 border border-border-default">
-            <h1 class="text-2xl font-bold text-primary mb-4">
-                云航 CloudNav (React App Placeholder)
-            </h1>
-            <p class="text-secondary">
-                这里是您的 React 应用内容。请点击右上角的按钮切换主题。
-            </p>
-            <p class="mt-4 text-sm text-text-default">
-                当前模式：<span id="current-mode-display" class="font-medium text-primary"></span>
-            </p>
-
-            <div class="mt-6 flex flex-wrap justify-center gap-2">
-                <button class="px-3 py-1 rounded-md bg-primary text-white text-sm hover:opacity-90">Primary Btn</button>
-                <button class="px-3 py-1 rounded-md bg-secondary text-white text-sm hover:opacity-90">Secondary Btn</button>
-                <span class="px-3 py-1 rounded-md bg-accent text-white text-sm">Accent Tag</span>
-            </div>
-            <div class="mt-4 p-3 border border-border-default rounded-md text-left text-text-default">
-                <p>这是一个带边框的示例区域。</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- 您的 React 应用入口脚本 -->
-    <script type="module" src="/index.tsx"></script>
-
-    <!-- *** START: Theme Toggle JavaScript (主题切换逻辑) *** -->
-    <script>
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
-        const htmlElement = document.documentElement; // 获取 <html> 元素
-        const currentModeDisplay = document.getElementById('current-mode-display'); // 获取显示当前模式的元素
-
-        // 定义所有光线主题的类名和对应的显示名称
-        const lightThemes = [
-            { class: 'light-theme-default', name: '默认光线模式' },
-            { class: 'light-theme-warm', name: '暖色光线模式' },
-            { class: 'light-theme-cool', name: '冷色光线模式' },
-            { class: 'light-theme-minimal', name: '极简光线模式' },
-            { class: 'light-theme-soft', name: '柔和光线模式' },
-        ];
-        const darkTheme = { class: 'dark', name: '深色模式' };
-
-        let currentThemeClass = localStorage.getItem('theme') || lightThemes[0].class; // 从 localStorage 获取或默认为第一个光线主题
-        if (!lightThemes.some(t => t.class === currentThemeClass) && currentThemeClass !== darkTheme.class) {
-            // 如果存储的主题类无效，则重置为默认光线主题
-            currentThemeClass = lightThemes[0].class;
-        }
-
-        // --- SVG 图标定义 ---
-        const sunIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
-        const moonIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
-
-        // --- 辅助函数：更新按钮图标和显示文本 ---
-        function updateThemeUI() {
-            // 移除所有主题类
-            htmlElement.classList.remove(darkTheme.class, ...lightThemes.map(t => t.class));
-            // 添加当前主题类
-            htmlElement.classList.add(currentThemeClass);
-            localStorage.setItem('theme', currentThemeClass); // 保存当前主题
-
-            if (currentThemeClass === darkTheme.class) {
-                themeIcon.innerHTML = sunIcon; // 深色模式显示太阳图标 (点击切换到光线)
-                currentModeDisplay.textContent = darkTheme.name;
-            } else {
-                themeIcon.innerHTML = moonIcon; // 光线模式显示月亮图标 (点击切换到深色)
-                const currentLight = lightThemes.find(t => t.class === currentThemeClass);
-                currentModeDisplay.textContent = currentLight ? currentLight.name : '未知模式';
-            }
-        }
-
-        // 页面加载时立即更新 UI
-        updateThemeUI();
-
-        // --- 切换模式的事件监听器 ---
-        themeToggleBtn.addEventListener('click', () => {
-            if (currentThemeClass === darkTheme.class) {
-                // 当前是深色模式，切换到第一个光线模式
-                currentThemeClass = lightThemes[0].class;
-            } else {
-                // 当前是光线模式，找到当前光线模式的索引
-                const currentIndex = lightThemes.findIndex(t => t.class === currentThemeClass);
-                if (currentIndex !== -1 && currentIndex < lightThemes.length - 1) {
-                    // 切换到下一个光线模式
-                    currentThemeClass = lightThemes[currentIndex + 1].class;
-                } else {
-                    // 已经是最后一个光线模式，切换到深色模式
-                    currentThemeClass = darkTheme.class;
-                }
-            }
-            updateThemeUI(); // 切换后更新 UI
-        });
-    </script>
-    <!-- *** END: Theme Toggle JavaScript *** -->
+  <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors duration-300">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
