@@ -20,7 +20,7 @@ const LinkCard: React.FC<LinkCardProps> = ({
     onShowContextMenu,
     closeContextMenu,
 }) => {
-    // 只有一个状态，用于移动端点击触发的描述弹窗
+    // 仅用于移动端点击触发的描述弹窗
     const [showDescriptionPopover, setShowDescriptionPopover] = useState(false);
     const buttonRef = useRef<HTMLButtonElement>(null); // Info 按钮的引用
     const popoverRef = useRef<HTMLDivElement>(null); // 描述弹窗的引用
@@ -84,13 +84,15 @@ const LinkCard: React.FC<LinkCardProps> = ({
         closeContextMenu(); // 关闭全局上下文菜单
     };
 
-    // --- 弹窗定位逻辑 ---
+    // --- 弹窗定位逻辑：再次优化，确保宽度和位置正确 ---
     const calculatePopoverPosition = useCallback(() => {
         if (!buttonRef.current || !popoverRef.current) return;
 
         const triggerRect = buttonRef.current.getBoundingClientRect(); // Info 按钮的位置和尺寸
         const popoverElem = popoverRef.current;
-        const popoverRect = popoverElem.getBoundingClientRect(); // 弹窗的尺寸
+        
+        // 注意：这里 popoverRect 必须在 popoverElem 已经渲染并应用了所有样式后获取
+        const popoverRect = popoverElem.getBoundingClientRect();
 
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
@@ -100,27 +102,29 @@ const LinkCard: React.FC<LinkCardProps> = ({
         let finalLeft = 0;
 
         // --- 横向定位：优先右侧，其次左侧，最后在视口内居中或对齐 ---
-        // 尝试放置在按钮右侧
+        // 1. 尝试放置在按钮右侧
         let potentialLeftRight = triggerRect.right + margin;
+        // 2. 尝试放置在按钮左侧
+        let potentialLeftLeft = triggerRect.left - popoverRect.width - margin;
+
+        // 检查是否适合放在右侧
         if (potentialLeftRight + popoverRect.width <= viewportWidth - margin) {
             finalLeft = potentialLeftRight;
-        } else {
-            // 右侧空间不足，尝试放置在按钮左侧
-            let potentialLeftLeft = triggerRect.left - popoverRect.width - margin;
-            if (potentialLeftLeft >= margin) {
-                finalLeft = potentialLeftLeft;
-            } else {
-                // 左右两侧空间都不足，或者都太紧凑。
-                // 默认与按钮左侧对齐，然后强制限制在视口内。
-                finalLeft = triggerRect.left;
-                // 确保不超出视口右侧
-                if (finalLeft + popoverRect.width > viewportWidth - margin) {
-                    finalLeft = viewportWidth - popoverRect.width - margin;
-                }
-                // 确保不超出视口左侧
-                if (finalLeft < margin) {
-                    finalLeft = margin;
-                }
+        }
+        // 如果右侧不适合，检查是否适合放在左侧
+        else if (potentialLeftLeft >= margin) {
+            finalLeft = potentialLeftLeft;
+        }
+        // 如果左右两侧都不适合（例如，空间太小或弹窗太宽），则与触发元素左侧对齐，并强制限制在视口内
+        else {
+            finalLeft = triggerRect.left; // 初始与触发元素左侧对齐
+            // 确保不超出视口右侧
+            if (finalLeft + popoverRect.width > viewportWidth - margin) {
+                finalLeft = viewportWidth - popoverRect.width - margin;
+            }
+            // 确保不超出视口左侧 (处理弹窗比视口宽的情况)
+            if (finalLeft < margin) {
+                finalLeft = margin;
             }
         }
 
@@ -135,16 +139,17 @@ const LinkCard: React.FC<LinkCardProps> = ({
         if (finalTop < margin) {
             finalTop = margin;
         }
-
+        
         setPopoverPosition({ top: finalTop, left: finalLeft });
     }, [showDescriptionPopover]); // 仅当弹窗显示/隐藏状态改变时才重新计算
 
     useEffect(() => {
         if (showDescriptionPopover) {
-            // 确保在弹窗内容渲染完毕后，其尺寸准确时再进行位置计算
+            // 使用一个更长的延迟，确保弹窗内容完全渲染并计算出准确的尺寸
+            // 关键：增加延迟到 100ms，以等待浏览器完成布局计算
             const timeoutId = setTimeout(() => {
                 calculatePopoverPosition();
-            }, 0);
+            }, 100); 
 
             // 监听窗口大小调整和页面滚动，以便动态更新弹窗位置
             const handleResizeAndScroll = () => calculatePopoverPosition();
@@ -184,48 +189,70 @@ const LinkCard: React.FC<LinkCardProps> = ({
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative flex items-center gap-3 p-3 bg-card-bg rounded-xl border border-border-default shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-            title={link.description || link.url} // **关键：完全依赖原生 title 属性进行桌面端悬浮提示**
+            className="relative flex items-center gap-3 p-3 bg-card-bg rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
             onContextMenu={handleContextMenu}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeaveCard} // 仅用于长按清理，不影响桌面悬浮
-            onClick={handleClick} // 卡片通用点击处理器
+            onMouseLeave={handleMouseLeaveCard}
+            onClick={handleClick}
         >
-            {/* Compact Icon */}
-            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold uppercase shrink-0">
-                {link.icon ? <img src={link.icon} alt={link.title.charAt(0)} className="w-5 h-5"/> : link.title.charAt(0)}
+            {/* ... (其他内容保持不变，例如图标、标题、URL) ... */}
+            {link.iconUrl ? (
+                <img src={link.iconUrl} alt="Favicon" className="w-6 h-6 rounded-full flex-shrink-0" />
+            ) : (
+                <div className="w-6 h-6 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-600 dark:text-gray-300 flex-shrink-0">
+                    {link.title ? link.title[0].toUpperCase() : 'L'}
+                </div>
+            )}
+            <div className="flex-grow overflow-hidden">
+                <h3 className="text-base font-semibold text-text-primary truncate">{link.title}</h3>
+                <p className="text-sm text-text-secondary truncate">{link.url}</p>
             </div>
 
-            {/* Text Content */}
-            <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm text-text-default truncate group-hover:text-primary transition-colors">
-                    {link.title}
-                </h3>
-            </div>
+            {/* Pin 按钮 */}
+            <button
+                className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full transition-colors duration-200 ${
+                    link.isPinned ? 'text-yellow-500 hover:bg-gray-200 dark:hover:bg-gray-700' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onTogglePin(link.id, e);
+                }}
+                aria-label={link.isPinned ? "Unpin link" : "Pin link"}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                >
+                    <path
+                        fillRule="evenodd"
+                        d="M12 2.25a.75.75 0 01.75.75v11.69l3.22 3.22a.75.75 0 11-1.06 1.06l-4.5-4.5a.75.75 0 01-1.06 0l-4.5 4.5a.75.75 0 11-1.06-1.06l3.22-3.22V3a.75.75 0 01.75-.75z"
+                        clipRule="evenodd"
+                    />
+                </svg>
+            </button>
 
-            {/* Description Button (仅在小屏幕显示，桌面端隐藏) */}
+            {/* Info 按钮 - 触发描述弹窗 */}
             {link.description && (
                 <button
-                    ref={buttonRef}
+                    ref={buttonRef} // 绑定 ref
+                    className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
                     onClick={toggleDescriptionPopover}
-                    className="ml-2 p-1 rounded-full text-secondary hover:bg-primary/10 hover:text-primary transition-colors z-10 shrink-0 block sm:hidden" // `block sm:hidden` 确保仅在移动端显示
-                    title="查看描述" // 这个 title 仅用于移动端 Info 按钮自身的悬浮提示（如果存在）
+                    aria-label="Show description"
                 >
-                    <Info size={16} />
+                    <Info className="w-4 h-4" />
                 </button>
             )}
 
-            {/* 移动端点击触发的描述弹窗 */}
+            {/* 描述弹窗 */}
             {showDescriptionPopover && link.description && (
                 <div
-                    ref={popoverRef}
-                    className="fixed z-[999] bg-card-bg border border-border-default rounded-lg shadow-xl p-3 text-xs text-text-default max-w-[calc(100vw-32px)]" // **关键：调整最大宽度，确保横向展示**
-                    onClick={(e) => e.stopPropagation()} // 阻止点击弹窗内部时关闭弹窗
-                    style={{
-                        top: popoverPosition.top,
-                        left: popoverPosition.left,
-                    }}
+                    ref={popoverRef} // 绑定 ref
+                    className="absolute z-[999] p-3 text-sm bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-w-[calc(100vw-32px)] text-text-primary break-words" // <-- 关键修改: 添加 break-words
+                    style={{ top: popoverPosition.top, left: popoverPosition.left }}
                 >
                     {link.description}
                 </div>
