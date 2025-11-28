@@ -1,4 +1,4 @@
-// App.tsx
+// App.tsx (无需修改，与您之前提供的版本相同)
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon } from 'lucide-react'; // 确保你已经安装了 lucide-react
 
