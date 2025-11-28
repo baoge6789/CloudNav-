@@ -8,14 +8,65 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        darkMode: 'class',
+        darkMode: 'class', // 启用深色模式切换功能，通过添加/移除 'dark' class 来控制
         theme: {
           extend: {
             colors: {
-              primary: '#3b82f6',
-              secondary: '#64748b',
-              dark: '#0f172a',
-              card: '#1e293b',
+              // --- 您原有的颜色定义 ---
+              // 这些颜色是默认颜色，当 <html> 元素没有 'dark' 类时生效，
+              // 因此它们是“光线模式”下的默认颜色。
+              primary: '#3b82f6',   // 光线模式下的主要强调色 (例如：按钮、链接)
+              secondary: '#64748b', // 光线模式下的次要颜色 (例如：次要文本、边框)
+              
+              // 这些颜色通常作为深色模式下的基础色或特定元素背景色
+              dark: '#0f172a',      // 深色模式下的主要背景色
+              card: '#1e293b',      // 深色模式下的卡片背景色
+              
+              // --- 以下是可选的颜色代码示例，您可以根据需要取消注释并使用 ---
+
+              // 1. 针对光线模式的更多颜色定义示例 (当 <html> 没有 'dark' 类时生效)
+              // 您可以直接在这里定义更多光线模式下的特定颜色，例如：
+              // 'light-bg-default': '#ffffff', // 光线模式下的默认背景色
+              // 'light-text-default': '#1a202c', // 光线模式下的默认文本颜色
+              // 'light-border': '#e2e8f0',      // 光线模式下的边框颜色
+              // 'light-accent': '#f6ad55',      // 光线模式下的辅助强调色
+              // 'primary-light-hover': '#2563eb', // 光线模式下 primary 颜色的 hover 状态
+
+              // 2. 针对深色模式的特定颜色定义示例 (当 <html> 拥有 'dark' 类时生效)
+              // 如果您希望在深色模式下有与 primary/secondary 对应的不同颜色，可以这样定义：
+              // 'dark-primary': '#60a5fa',   // 深色模式下的主要强调色 (比光线模式的 primary 亮一些)
+              // 'dark-secondary': '#94a3b8', // 深色模式下的次要颜色 (比光线模式的 secondary 亮一些)
+              // 'dark-bg-surface': '#1a202c',  // 深色模式下的次要背景色
+              // 'dark-text-default': '#e2e8f0', // 深色模式下的默认文本颜色
+              // 'dark-border': '#4a5568',       // 深色模式下的边框颜色
+              // 'dark-accent': '#fbd38d',       // 深色模式下的辅助强调色
+              // 'primary-dark-hover': '#3b82f6', // 深色模式下 dark-primary 颜色的 hover 状态
+              
+              // 如何使用这些深色模式特定颜色：
+              // 您可以在 HTML 中直接使用它们，例如：
+              // <button class="bg-primary dark:bg-dark-primary text-white">按钮</button>
+              // 或者，如果您定义了 'dark-primary'，可以直接用 `bg-dark-primary`，
+              // 但通常会结合 `dark:` 前缀来覆盖默认颜色。
+
+              // 3. 通用的语义化颜色示例 (无论光线/深色模式都可使用，或通过 dark: 前缀区分)
+              // success: '#48bb78', // 成功提示色
+              // warning: '#ecc94b', // 警告提示色
+              // danger: '#f56565',  // 危险/错误提示色
+              // info: '#4299e1',    // 信息提示色
+              
+              // 4. 示例：为某个颜色定义不同的明暗度 (类似于 Tailwind 默认的颜色系统)
+              // 'custom-blue': {
+              //   50: '#eff6ff',
+              //   100: '#dbeafe',
+              //   200: '#bfdbfe',
+              //   300: '#93c5fd',
+              //   400: '#60a5fa',
+              //   500: '#3b82f6', // 相当于您的 primary
+              //   600: '#2563eb',
+              //   700: '#1d4ed8',
+              //   800: '#1e40af',
+              //   900: '#1e3a8a',
+              // },
             }
           }
         }
