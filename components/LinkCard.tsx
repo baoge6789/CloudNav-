@@ -81,63 +81,87 @@ const LinkCard: React.FC<LinkCardProps> = ({
         closeContextMenu(); // 关闭全局上下文菜单
     };
 
-    // Calculate popover position dynamically
+    // Calculate popover position dynamically and robustly
     const calculatePopoverPosition = useCallback(() => {
         if (buttonRef.current && popoverRef.current) {
             const buttonRect = buttonRef.current.getBoundingClientRect();
+            // Important: Get popover dimensions after it's rendered (showDescriptionPopover is true)
+            // For fixed elements, getBoundingClientRect works even if it's not fully visible.
             const popoverRect = popoverRef.current.getBoundingClientRect();
+
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
+            const margin = 10; // Margin from viewport edges and between elements
 
-            const margin = 8; // Margin between button and popover, and from viewport edges
+            let finalTop = 0;
+            let finalLeft = 0;
 
-            let top = buttonRect.top; // Default: align with button's top
-            let left = buttonRect.right + margin; // Default: to the right of the button
+            // --- Horizontal positioning preference: Right -> Left -> Fallback ---
+            let potentialLeftRight = buttonRect.right + margin;
+            let potentialLeftLeft = buttonRect.left - popoverRect.width - margin;
 
-            // 1. Check if popover goes off-screen to the right
-            if (left + popoverRect.width > viewportWidth - margin) {
-                // If it does, try to position it to the left of the button
-                left = buttonRect.left - popoverRect.width - margin;
-                if (left < margin) { // If it still goes off-screen to the left (or not enough space)
-                    // Fallback: position below the button, aligned left
-                    left = buttonRect.left;
-                    top = buttonRect.bottom + margin;
-                    // If positioning below also goes off-screen to the right
-                    if (left + popoverRect.width > viewportWidth - margin) {
-                        left = viewportWidth - popoverRect.width - margin; // Align right with viewport
-                        if (left < margin) left = margin; // Ensure it's not too far left
-                    }
+            let fitsOnRight = (potentialLeftRight + popoverRect.width) < (viewportWidth - margin);
+            let fitsOnLeft = potentialLeftLeft > margin;
+
+            if (fitsOnRight) {
+                finalLeft = potentialLeftRight;
+            } else if (fitsOnLeft) {
+                finalLeft = potentialLeftLeft;
+            } else {
+                // Not enough space on either side, try to align with button's left,
+                // then adjust to fit within viewport if it overflows right.
+                finalLeft = buttonRect.left;
+                if ((finalLeft + popoverRect.width) > (viewportWidth - margin)) {
+                    finalLeft = viewportWidth - popoverRect.width - margin;
+                }
+                if (finalLeft < margin) { // Still off-screen or too close to left edge
+                    finalLeft = margin; // Align with left viewport edge
                 }
             }
 
-            // 2. Ensure popover doesn't go off-screen vertically
-            if (top + popoverRect.height > viewportHeight - margin) {
-                top = viewportHeight - popoverRect.height - margin;
+            // --- Vertical positioning preference: Vertically center with button, then adjust to fit viewport ---
+            let potentialTopCentered = buttonRect.top + (buttonRect.height / 2) - (popoverRect.height / 2);
+
+            // Adjust if it goes off-screen top
+            if (potentialTopCentered < margin) {
+                potentialTopCentered = margin;
             }
-            if (top < margin) {
-                top = margin;
+            // Adjust if it goes off-screen bottom
+            if ((potentialTopCentered + popoverRect.height) > (viewportHeight - margin)) {
+                potentialTopCentered = viewportHeight - popoverRect.height - margin;
+            }
+            // If after bottom adjustment, it's still less than margin (e.g., popover is taller than viewport)
+            if (potentialTopCentered < margin) {
+                potentialTopCentered = margin;
             }
 
-            setPopoverPosition({ top, left });
+            finalTop = potentialTopCentered;
+
+            setPopoverPosition({ top: finalTop, left: finalLeft });
         }
     }, []);
 
     useEffect(() => {
         if (showDescriptionPopover) {
-            calculatePopoverPosition(); // Calculate initial position
+            // Give browser a moment to render the popover with its content
+            // before calculating its dimensions. requestAnimationFrame is often good for this.
+            const timeoutId = setTimeout(() => {
+                calculatePopoverPosition();
+            }, 0); // Use setTimeout for next tick, or requestAnimationFrame
 
             // Recalculate position on window resize or scroll
             const handleResizeAndScroll = () => calculatePopoverPosition();
             window.addEventListener('resize', handleResizeAndScroll);
             // Use capture phase for scroll to catch events from elements other than window
-            window.addEventListener('scroll', handleResizeAndScroll, true);
+            document.addEventListener('scroll', handleResizeAndScroll, true); // Listen on document for general scroll
 
             return () => {
+                clearTimeout(timeoutId);
                 window.removeEventListener('resize', handleResizeAndScroll);
-                window.removeEventListener('scroll', handleResizeAndScroll, true);
+                document.removeEventListener('scroll', handleResizeAndScroll, true);
             };
         }
-    }, [showDescriptionPopover, calculatePopoverPosition]); // Recalculate when visibility changes or dependencies change
+    }, [showDescriptionPopover, calculatePopoverPosition]);
 
     // Effect to close popover when clicking outside
     useEffect(() => {
@@ -165,7 +189,7 @@ const LinkCard: React.FC<LinkCardProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             className="relative flex items-center gap-3 p-3 bg-card-bg rounded-xl border border-border-default shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-            title={link.description || link.url}
+            title={link.description || link.url} // 保持原生 title 悬浮提示
             onContextMenu={handleContextMenu}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
