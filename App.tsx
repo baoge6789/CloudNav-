@@ -714,7 +714,7 @@ function App() {
                  {(!pinnedLinks.length && !searchQuery && selectedCategory === 'all') && (
                     <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary to-accent text-white shadow-lg flex items-center justify-between">
                          <div>
-                            <h1 className="text-xl font-bold">早安 👋</h1>
+                            <h1 className="text-xl font-bold">欢迎您 👋</h1>
                             <p className="text-sm opacity-90 mt-1">
                                 {links.length} 个链接 · {categories.length} 个分类
                             </p>
