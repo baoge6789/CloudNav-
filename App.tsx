@@ -1,20 +1,20 @@
+// src/App.tsx
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Search, Plus, Upload, Moon, Sun, Menu,
   Trash2, Edit2, Loader2, Cloud, CheckCircle2, AlertCircle,
-  Pin, Settings, Lock, CloudCog, Github, GitFork, Info // <-- 确保 Info 图标已导入
+  Pin, Settings, Lock, CloudCog, Github, GitFork, Info, X // <-- 确保 X 图标也已导入
 } from 'lucide-react';
 import { LinkItem, Category, DEFAULT_CATEGORIES, INITIAL_LINKS, WebDavConfig, AIConfig } from './types';
 import { parseBookmarks } from './services/bookmarkParser';
-import Icon from './components/Icon'; // 确保 Icon 组件存在
-import LinkModal from './components/LinkModal'; // 确保 LinkModal 组件存在
-import AuthModal from './components/AuthModal'; // 确保 AuthModal 组件存在
-import CategoryManagerModal from './components/CategoryManagerModal'; // 确保 CategoryManagerModal 组件存在
-import BackupModal from './components/BackupModal'; // 确保 BackupModal 组件存在
-import CategoryAuthModal from './components/CategoryAuthModal'; // 确保 CategoryAuthModal 组件存在
-import ImportModal from './components/ImportModal'; // 确保 ImportModal 组件存在
-import SettingsModal from './components/SettingsModal'; // 确保 SettingsModal 组件存在
-import DescriptionModal from './components/DescriptionModal'; // <-- 确保 DescriptionModal 组件存在
+import LinkModal from './components/LinkModal';
+import AuthModal from './components/AuthModal';
+import CategoryManagerModal from './components/CategoryManagerModal';
+import BackupModal from './components/BackupModal';
+import CategoryAuthModal from './components/CategoryAuthModal';
+import ImportModal from './components/ImportModal';
+import SettingsModal from './components/SettingsModal';
+import DescriptionPopover from './components/DescriptionPopover'; // <-- 导入新的 DescriptionPopover
 
 // --- 导入设备检测工具 ---
 import { isMobileDevice } from './utils/deviceDetection';
@@ -61,9 +61,10 @@ interface LinkActionsMenuProps {
   onTogglePin: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
   onEdit: (link: LinkItem, e: React.MouseEvent | React.TouchEvent) => void;
   onDelete: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
+  onShowDescription: (link: LinkItem, e: React.MouseEvent | React.TouchEvent) => void; // 添加新的回调
 }
 
-const LinkActionsMenu: React.FC<LinkActionsMenuProps> = ({ link, x, y, onClose, onTogglePin, onEdit, onDelete }) => {
+const LinkActionsMenu: React.FC<LinkActionsMenuProps> = ({ link, x, y, onClose, onTogglePin, onEdit, onDelete, onShowDescription }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -92,6 +93,14 @@ const LinkActionsMenu: React.FC<LinkActionsMenuProps> = ({ link, x, y, onClose, 
 
   return (
     <div ref={menuRef} style={menuStyle} className="text-sm">
+      {link.description && (
+        <button
+          className="flex items-center gap-2 w-full px-4 py-2 hover:bg-bg-secondary text-text-default"
+          onClick={(e) => { onShowDescription(link, e); onClose(); }}
+        >
+          <Info size={16} /> 查看描述
+        </button>
+      )}
       <button
         className="flex items-center gap-2 w-full px-4 py-2 hover:bg-bg-secondary text-text-default"
         onClick={(e) => { onTogglePin(link.id, e); onClose(); }}
@@ -136,9 +145,10 @@ function App() {
   const [backupStatus, setBackupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 新增：描述模态框状态
-  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
-  const [currentDescription, setCurrentDescription] = useState<{ title: string; description: string }>({ title: '', description: '' });
+  // 新增：描述浮动气泡状态
+  const [activeDescriptionLink, setActiveDescriptionLink] = useState<LinkItem | null>(null);
+  const [descriptionPopoverPos, setDescriptionPopoverPos] = useState<{ x: number; y: number } | null>(null);
+
 
   // --- 新增：设备类型判断 ---
   const isMobile = useMemo(() => isMobileDevice(), []);
@@ -199,6 +209,23 @@ function App() {
   const closeContextMenu = () => {
     setContextMenu(null);
   };
+
+  // 关闭描述浮动气泡
+  const closeDescriptionPopover = () => {
+    setActiveDescriptionLink(null);
+    setDescriptionPopoverPos(null);
+  };
+
+  // 显示描述浮动气泡
+  const handleShowDescription = (link: LinkItem, e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setActiveDescriptionLink(link);
+    // 尝试将 popover 放置在按钮下方，并稍微居中
+    setDescriptionPopoverPos({ x: rect.left + rect.width / 2, y: rect.bottom + 5 });
+  };
+
 
   const handleAddLink = (newLink: LinkItem) => {
     setLinks((prev) => [...prev, newLink]);
@@ -478,21 +505,9 @@ function App() {
 
     // 阻止长按后的点击事件触发链接跳转 (桌面端)
     const handleClick = (e: React.MouseEvent) => {
-        if (isMobile) return;
         if (isLongPressMouseActivatedRef.current) {
             e.preventDefault();
             isLongPressMouseActivatedRef.current = false; // 重置
-        }
-    };
-
-    // --- 新增：处理点击 "i" 按钮显示描述的函数 ---
-    const handleDescriptionButtonClick = (e: React.MouseEvent | React.TouchEvent) => {
-        e.preventDefault(); // 阻止 <a> 标签的默认跳转行为
-        e.stopPropagation(); // 阻止事件冒泡到 <a> 标签的父级
-
-        if (link.description) {
-            setCurrentDescription({ title: link.title, description: link.description });
-            setShowDescriptionModal(true);
         }
     };
 
@@ -508,7 +523,7 @@ function App() {
           onMouseDown={!isMobile ? handleMouseDown : undefined}     // 桌面端左键长按开始
           onMouseUp={!isMobile ? handleMouseUp : undefined}         // 桌面端左键长按结束或短按
           onMouseLeave={!isMobile ? handleMouseLeave : undefined}   // 桌面端鼠标离开
-          onClick={!isMobile ? handleClick : undefined}             // 桌面端阻止长按后的默认点击
+          onClick={handleClick}             // 桌面端阻止长按后的默认点击
 
           onTouchStart={isMobile ? handleTouchStart : undefined}    // 移动端触摸开始
           onTouchMove={isMobile ? handleTouchMove : undefined}      // 移动端触摸移动
@@ -533,22 +548,19 @@ function App() {
               )}
           </div>
 
-          {/* 移动端 "i" 按钮显示描述 */}
-          {isMobile && link.description && (
-              <button
-                  onClick={handleDescriptionButtonClick}
-                  // onTouchStart 可以在移动端提供更快的响应，避免点击延迟
-                  onTouchStart={handleDescriptionButtonClick}
-                  className="ml-auto p-1 rounded-full text-secondary hover:bg-primary/5 hover:text-primary shrink-0"
-                  aria-label="显示描述"
-              >
-                  <Info size={18} />
-              </button>
-          )}
-
-          {/* 桌面端悬浮操作按钮 */}
+          {/* 操作按钮组：桌面端悬浮显示，移动端通过长按菜单显示 */}
+          {/* 这里只处理桌面端悬浮显示，移动端操作通过 LinkActionsMenu 统一处理 */}
           {!isMobile && (
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 bg-card-bg/90 pl-2">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 bg-card-bg/90 pl-2">
+                  {link.description && (
+                      <button
+                          onClick={(e) => handleShowDescription(link, e)}
+                          className="p-1 rounded-full text-secondary hover:bg-primary/5 hover:text-primary"
+                          title="查看描述"
+                      >
+                          <Info size={16} />
+                      </button>
+                  )}
                   <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(link.id, e); }}
                       className="p-1 rounded-full text-secondary hover:bg-primary/5 hover:text-primary"
@@ -729,6 +741,7 @@ function App() {
           onTogglePin={togglePin}
           onEdit={handleEditLinkFromMenu}
           onDelete={handleDeleteLink}
+          onShowDescription={handleShowDescription} // 传递给上下文菜单
         />
       )}
 
@@ -798,13 +811,15 @@ function App() {
         onOpenBackupModal={() => { setShowBackupModal(true); setShowSettingsModal(false); }}
       />
 
-      {/* 描述模态框 */}
-      <DescriptionModal
-        isOpen={showDescriptionModal}
-        onClose={() => setShowDescriptionModal(false)}
-        title={currentDescription.title}
-        description={currentDescription.description}
-      />
+      {/* 描述浮动气泡 */}
+      {activeDescriptionLink && descriptionPopoverPos && (
+        <DescriptionPopover
+          description={activeDescriptionLink.description || ''}
+          x={descriptionPopoverPos.x}
+          y={descriptionPopoverPos.y}
+          onClose={closeDescriptionPopover}
+        />
+      )}
     </div>
   );
 }
