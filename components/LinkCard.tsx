@@ -28,6 +28,9 @@ const LinkCard: React.FC<LinkCardProps> = ({
     // 弹窗位置的状态
     const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
+    // 新增：判断是否为移动设备的状态
+    const [isMobile, setIsMobile] = useState(false);
+
     const longPressTimerRef = useRef<number | null>(null);
     const isLongPressActivatedRef = useRef(false);
 
@@ -141,10 +144,20 @@ const LinkCard: React.FC<LinkCardProps> = ({
         }
         
         setPopoverPosition({ top: finalTop, left: finalLeft });
-    }, [showDescriptionPopover]); // 仅当弹窗显示/隐藏状态改变时才重新计算
+    }, [isMobile]); // 依赖 isMobile，因为弹窗是否渲染会影响其尺寸和位置计算
+
+    // 新增：监听窗口大小变化，判断是否为移动设备
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth <= 768); // 假设 768px 是移动端断点
+        };
+        checkMobile(); // 首次加载时检查
+        window.addEventListener('resize', checkMobile); // 监听窗口大小变化
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
-        if (showDescriptionPopover) {
+        if (showDescriptionPopover && isMobile) { // 只有在移动端且弹窗显示时才计算位置
             // 使用一个更长的延迟，确保弹窗内容完全渲染并计算出准确的尺寸
             // 关键：增加延迟到 100ms，以等待浏览器完成布局计算
             const timeoutId = setTimeout(() => {
@@ -162,13 +175,14 @@ const LinkCard: React.FC<LinkCardProps> = ({
                 document.removeEventListener('scroll', handleResizeAndScroll, true);
             };
         }
-    }, [showDescriptionPopover, calculatePopoverPosition]);
+    }, [showDescriptionPopover, isMobile, calculatePopoverPosition]); // 依赖 isMobile
 
     // 监听点击外部事件，关闭弹窗
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
             if (
+                isMobile && // 仅在移动端处理外部点击关闭弹窗
                 showDescriptionPopover &&
                 popoverRef.current && !popoverRef.current.contains(target) && // 点击不在弹窗内部
                 buttonRef.current && !buttonRef.current.contains(target) // 点击不在 Info 按钮内部
@@ -180,7 +194,7 @@ const LinkCard: React.FC<LinkCardProps> = ({
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [showDescriptionPopover]);
+    }, [showDescriptionPopover, isMobile]); // 依赖 isMobile
 
 
     return (
@@ -209,7 +223,7 @@ const LinkCard: React.FC<LinkCardProps> = ({
                 <p className="text-sm text-text-secondary truncate">{link.url}</p>
             </div>
 
-            {/* Pin 按钮 */}
+            {/* Pin 按钮 (保持原位，在所有设备上都可见) */}
             <button
                 className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full transition-colors duration-200 ${
                     link.isPinned ? 'text-yellow-500 hover:bg-gray-200 dark:hover:bg-gray-700' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -235,8 +249,8 @@ const LinkCard: React.FC<LinkCardProps> = ({
                 </svg>
             </button>
 
-            {/* Info 按钮 - 触发描述弹窗 */}
-            {link.description && (
+            {/* Info 按钮 - 仅在移动端显示 */}
+            {isMobile && link.description && (
                 <button
                     ref={buttonRef} // 绑定 ref
                     className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
@@ -247,11 +261,11 @@ const LinkCard: React.FC<LinkCardProps> = ({
                 </button>
             )}
 
-            {/* 描述弹窗 */}
-            {showDescriptionPopover && link.description && (
+            {/* 描述弹窗 - 仅在移动端显示 */}
+            {isMobile && showDescriptionPopover && link.description && (
                 <div
                     ref={popoverRef} // 绑定 ref
-                    className="absolute z-[999] p-3 text-sm bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-w-[calc(100vw-32px)] text-text-primary break-words" // <-- 关键修改: 添加 break-words
+                    className="absolute z-[999] p-3 text-sm bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-w-[calc(100vw-32px)] text-text-primary break-words"
                     style={{ top: popoverPosition.top, left: popoverPosition.left }}
                 >
                     {link.description}
