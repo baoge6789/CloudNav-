@@ -1,6 +1,7 @@
 // src/index.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
+// 确保您已经安装了 lucide-react：npm install lucide-react
 import { Sun, Moon, Monitor, Edit, Trash2, Share2 } from 'lucide-react';
 
 // Define theme mode types
