@@ -1,65 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tailwind Dark Mode with Custom Colors</title>
-    <!-- 引入 Tailwind CSS CDN (或您的构建输出) -->
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="https://lucide.dev/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>云航 CloudNav</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 您的 Tailwind 配置脚本 -->
     <script>
       tailwind.config = {
         darkMode: 'class', // 确保这里是 'class'
         theme: {
           extend: {
             colors: {
-              // --- 您原有的核心颜色定义 ---
+              // 您原有的核心颜色定义
               primary: '#3b82f6',   // 光线模式下的主要强调色
               secondary: '#64748b', // 光线模式下的次要颜色
-              
-              // 这些颜色通常作为深色模式下的基础色或特定元素背景色
               dark: '#0f172a',      // 深色模式下的主要背景色
               card: '#1e293b',      // 深色模式下的卡片背景色
 
-              // --- 扩展的光线模式特定颜色 ---
-              'light-bg-default': '#ffffff', 
-              'light-text-default': '#1a202c', 
-              'light-border': '#e2e8f0',      
-              'light-accent': '#f6ad55',      
-              'light-primary-hover': '#2563eb', 
+              // 为 body 标签的默认颜色添加别名，方便管理和理解
+              'light-bg': '#f9fafb', // 对应 bg-gray-50
+              'light-text': '#1e293b', // 对应 text-slate-900
+              'dark-bg': '#0f172a', // 对应 bg-slate-900 (与 'dark' 相同，但语义更清晰)
+              'dark-text': '#f8fafc', // 对应 text-slate-50
 
-              // --- 扩展的深色模式特定颜色 ---
-              'dark-primary': '#60a5fa',   
-              'dark-secondary': '#94a3b8', 
-              'dark-bg-surface': '#1a202c',  
-              'dark-text-default': '#e2e8f0', 
-              'dark-border': '#4a5568',       
-              'dark-accent': '#fbd38d',       
-              'dark-primary-hover': '#3b82f6', 
-
-              // --- 通用的语义化颜色示例 ---
-              success: '#48bb78', 
-              warning: '#ecc94b', 
-              danger: '#f56565',  
-              info: '#4299e1',    
-              
-              // --- 示例：为某个颜色定义不同的明暗度 ---
-              'custom-blue': {
-                50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa',
-                500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a',
-              },
+              // 示例：深色模式下的 primary 和 secondary 颜色，通常会更亮一些
+              'dark-primary': '#60a5fa', // 深色模式下 primary 颜色更亮
+              'dark-secondary': '#94a3b8', // 深色模式下 secondary 颜色更亮
             }
           }
         }
       }
     </script>
-    
-    <!-- 推荐：用于防止页面加载时的闪烁 -->
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      /* Custom scrollbar for sidebar */
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      /* Simple CSS-only tooltip transition */
+      .tooltip-custom {
+          transition: opacity 0.2s, visibility 0.2s;
+          pointer-events: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "buffer": "https://aistudiocdn.com/buffer@^6.0.3"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+
+    <!-- *** START: FOUC Prevention Script (防止页面加载时闪烁) *** -->
     <script>
-        // 在页面加载前立即应用主题，防止闪烁
         (function() {
             const storedTheme = localStorage.getItem('theme');
+            // 如果 localStorage 中有主题设置，则应用该设置
+            // 否则，检查系统偏好设置 (prefers-color-scheme)
             if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
             } else {
@@ -67,162 +78,84 @@
             }
         })();
     </script>
+    <!-- *** END: FOUC Prevention Script *** -->
+
 </head>
 <!-- 
-    body 的背景和文本颜色：
-    默认 (光线模式) 使用 light-bg-default 和 light-text-default
-    深色模式下使用 dark 和 dark-text-default
+    body 的背景和文本颜色现在使用我们自定义的语义化颜色别名。
+    默认 (光线模式) 使用 light-bg 和 light-text
+    深色模式下使用 dark-bg 和 dark-text
+    transition-colors duration-300 让颜色切换更平滑。
 -->
-<body class="bg-light-bg-default text-light-text-default dark:bg-dark dark:text-dark-text-default 
-             min-h-screen flex flex-col items-center justify-center p-8 transition-colors duration-300">
-
-    <div class="bg-white dark:bg-card p-8 rounded-lg shadow-xl text-center w-full max-w-2xl transition-colors duration-300">
-        <h1 class="text-3xl font-bold mb-4 text-primary dark:text-dark-primary">
-            深色模式与自定义颜色演示
-        </h1>
-        <p class="text-secondary dark:text-dark-secondary mb-6">
-            点击按钮切换模式，观察所有颜色变化。
-        </p>
-        
+<body class="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text transition-colors duration-300">
+    <!-- 模式切换按钮，固定在右上角 -->
+    <div class="fixed top-4 right-4 z-50">
         <button id="theme-toggle" 
-                class="px-6 py-3 rounded-full 
+                class="px-4 py-2 rounded-full 
                        bg-primary text-white font-semibold 
-                       hover:bg-light-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-75
-                       dark:bg-dark-primary dark:hover:bg-dark-primary-hover dark:focus:ring-dark-primary
-                       transition-all duration-300">
+                       hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75
+                       dark:bg-dark-primary dark:hover:bg-blue-500 dark:focus:ring-blue-400
+                       transition-all duration-300 shadow-lg">
             切换模式
         </button>
+    </div>
 
-        <div class="mt-8 p-4 border border-light-border dark:border-dark-border rounded-md text-left">
-            <h2 class="text-xl font-semibold mb-2">当前模式：</h2>
-            <p id="current-mode" class="text-lg"></p>
-        </div>
-
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-            <!-- 主要颜色示例 -->
-            <div>
-                <h3 class="text-xl font-semibold mb-2 text-primary dark:text-dark-primary">主要颜色</h3>
-                <p class="mb-2">
-                    <span class="font-medium">Primary:</span> 
-                    <span class="text-primary dark:text-dark-primary">This is primary text.</span>
-                </p>
-                <p class="mb-2">
-                    <span class="font-medium">Secondary:</span> 
-                    <span class="text-secondary dark:text-dark-secondary">This is secondary text.</span>
-                </p>
-                <button class="px-4 py-2 rounded-md bg-primary text-white hover:bg-light-primary-hover dark:bg-dark-primary dark:hover:bg-dark-primary-hover transition-colors duration-200">
-                    Primary Button
-                </button>
-            </div>
-
-            <!-- 背景和边框颜色示例 -->
-            <div>
-                <h3 class="text-xl font-semibold mb-2 text-primary dark:text-dark-primary">背景与边框</h3>
-                <div class="p-3 mb-2 bg-light-bg-default border border-light-border dark:bg-dark-bg-surface dark:border-dark-border rounded-md">
-                    <p>这是一个使用 <code class="font-mono">light-bg-default</code> 和 <code class="font-mono">light-border</code> 的容器，深色模式下变为 <code class="font-mono">dark-bg-surface</code> 和 <code class="font-mono">dark-border</code>。</p>
-                </div>
-                <div class="p-3 bg-card text-white dark:bg-dark text-dark-text-default rounded-md">
-                    <p>这个容器默认是 <code class="font-mono">card</code> 背景，深色模式下变为 <code class="font-mono">dark</code> 背景。</p>
-                </div>
-            </div>
-
-            <!-- 辅助强调色示例 -->
-            <div>
-                <h3 class="text-xl font-semibold mb-2 text-primary dark:text-dark-primary">辅助强调色</h3>
-                <p class="mb-2">
-                    <span class="font-medium">Light Accent:</span> 
-                    <span class="text-light-accent">This is light accent.</span>
-                </p>
-                <p class="mb-2">
-                    <span class="font-medium">Dark Accent:</span> 
-                    <span class="text-dark-accent">This is dark accent.</span>
-                </p>
-                <button class="px-4 py-2 rounded-md bg-light-accent text-white hover:opacity-80 dark:bg-dark-accent dark:text-dark-text-default transition-colors duration-200">
-                    Accent Button
-                </button>
-            </div>
-
-            <!-- 语义化颜色示例 -->
-            <div>
-                <h3 class="text-xl font-semibold mb-2 text-primary dark:text-dark-primary">语义化颜色</h3>
-                <p class="text-success mb-1">Success message!</p>
-                <p class="text-warning mb-1">Warning message!</p>
-                <p class="text-danger mb-1">Danger message!</p>
-                <p class="text-info mb-1">Info message!</p>
-            </div>
-
-            <!-- Custom Blue 示例 -->
-            <div class="md:col-span-2">
-                <h3 class="text-xl font-semibold mb-2 text-primary dark:text-dark-primary">Custom Blue Shades</h3>
-                <div class="flex flex-wrap gap-2">
-                    <div class="w-12 h-12 bg-custom-blue-50 flex items-center justify-center text-xs text-custom-blue-900 rounded">50</div>
-                    <div class="w-12 h-12 bg-custom-blue-100 flex items-center justify-center text-xs text-custom-blue-900 rounded">100</div>
-                    <div class="w-12 h-12 bg-custom-blue-200 flex items-center justify-center text-xs text-custom-blue-900 rounded">200</div>
-                    <div class="w-12 h-12 bg-custom-blue-300 flex items-center justify-center text-xs text-custom-blue-900 rounded">300</div>
-                    <div class="w-12 h-12 bg-custom-blue-400 flex items-center justify-center text-xs text-custom-blue-900 rounded">400</div>
-                    <div class="w-12 h-12 bg-custom-blue-500 flex items-center justify-center text-xs text-white rounded">500</div>
-                    <div class="w-12 h-12 bg-custom-blue-600 flex items-center justify-center text-xs text-white rounded">600</div>
-                    <div class="w-12 h-12 bg-custom-blue-700 flex items-center justify-center text-xs text-white rounded">700</div>
-                    <div class="w-12 h-12 bg-custom-blue-800 flex items-center justify-center text-xs text-white rounded">800</div>
-                    <div class="w-12 h-12 bg-custom-blue-900 flex items-center justify-center text-xs text-white rounded">900</div>
-                </div>
-            </div>
+    <div id="root">
+        <!-- 这是一个占位符内容，用于在 React 应用加载前或无 React 内容时展示主题切换效果 -->
+        <div class="p-8 text-center bg-white dark:bg-card rounded-lg shadow-md max-w-md mx-auto mt-20">
+            <h1 class="text-2xl font-bold text-primary dark:text-dark-primary mb-4">
+                云航 CloudNav (React App Placeholder)
+            </h1>
+            <p class="text-secondary dark:text-dark-secondary">
+                这里是您的 React 应用内容。请点击右上角的按钮切换主题。
+            </p>
+            <p class="mt-4 text-sm text-gray-400 dark:text-gray-600">
+                当前模式：<span id="current-mode-display" class="font-medium"></span>
+            </p>
         </div>
     </div>
 
-    <!-- 您的 JavaScript 脚本 -->
+    <!-- 您的 React 应用入口脚本 -->
+    <script type="module" src="/index.tsx"></script>
+
+    <!-- *** START: Theme Toggle JavaScript (主题切换逻辑) *** -->
     <script>
         const themeToggleBtn = document.getElementById('theme-toggle');
         const htmlElement = document.documentElement; // 获取 <html> 元素
-        const currentModeDisplay = document.getElementById('current-mode');
+        const currentModeDisplay = document.getElementById('current-mode-display'); // 获取显示当前模式的元素
 
-        // --- 辅助函数：更新模式显示 ---
-        function updateModeDisplay() {
+        // 根据当前主题更新按钮文本和显示文本
+        function updateToggleButtonText() {
             if (htmlElement.classList.contains('dark')) {
-                currentModeDisplay.textContent = '深色模式 (Dark Mode)';
-                currentModeDisplay.classList.remove('text-green-600');
-                currentModeDisplay.classList.add('text-dark-primary'); // 使用深色模式的 primary 颜色
+                themeToggleBtn.textContent = '切换到光线模式';
+                currentModeDisplay.textContent = '深色模式';
+                currentModeDisplay.classList.remove('text-primary'); // 移除光线模式颜色
+                currentModeDisplay.classList.add('text-dark-primary'); // 添加深色模式颜色
             } else {
-                currentModeDisplay.textContent = '光线模式 (Light Mode)';
-                currentModeDisplay.classList.remove('text-dark-primary');
-                currentModeDisplay.classList.add('text-primary'); // 使用光线模式的 primary 颜色
+                themeToggleBtn.textContent = '切换到深色模式';
+                currentModeDisplay.textContent = '光线模式';
+                currentModeDisplay.classList.remove('text-dark-primary'); // 移除深色模式颜色
+                currentModeDisplay.classList.add('text-primary'); // 添加光线模式颜色
             }
         }
 
-        // --- 页面加载时应用主题和更新显示 ---
-        // 这里的逻辑与 head 中的脚本相似，但确保了显示也更新
-        function applyInitialTheme() {
-            const storedTheme = localStorage.getItem('theme');
-            if (storedTheme) {
-                if (storedTheme === 'dark') {
-                    htmlElement.classList.add('dark');
-                } else {
-                    htmlElement.classList.remove('dark');
-                }
-            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                // 如果没有存储，检查系统偏好
-                htmlElement.classList.add('dark');
-            } else {
-                // 默认到光线模式
-                htmlElement.classList.remove('dark');
-            }
-            updateModeDisplay(); // 更新显示
-        }
-        applyInitialTheme(); // 页面加载时立即执行
+        // 页面加载时立即更新按钮文本和显示文本
+        updateToggleButtonText();
 
-        // --- 切换模式的事件监听器 ---
+        // 为切换按钮添加点击事件监听器
         themeToggleBtn.addEventListener('click', () => {
             if (htmlElement.classList.contains('dark')) {
                 // 当前是深色模式，切换到光线模式
                 htmlElement.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
+                localStorage.setItem('theme', 'light'); // 保存偏好设置
             } else {
                 // 当前是光线模式，切换到深色模式
                 htmlElement.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
+                localStorage.setItem('theme', 'dark'); // 保存偏好设置
             }
-            updateModeDisplay(); // 切换后更新显示
+            updateToggleButtonText(); // 切换后更新按钮文本和显示文本
         });
     </script>
+    <!-- *** END: Theme Toggle JavaScript *** -->
 </body>
 </html>
