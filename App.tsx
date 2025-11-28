@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Search, Plus, Upload, Moon, Sun, Menu,
   Trash2, Edit2, Loader2, Cloud, CheckCircle2, AlertCircle,
   Pin, Settings, Lock, CloudCog, Github, GitFork
 } from 'lucide-react';
-// 确保这些路径和类型定义是正确的
 import { LinkItem, Category, DEFAULT_CATEGORIES, INITIAL_LINKS, WebDavConfig, AIConfig } from './types';
-import { parseBookmarks } from './services/bookmarkParser'; // 确保这个服务存在
-import Icon from './components/Icon'; // 确保这个组件存在
+import { parseBookmarks } from './services/bookmarkParser';
+import Icon from './components/Icon';
 import LinkModal from './components/LinkModal';
 import AuthModal from './components/AuthModal';
 import CategoryManagerModal from './components/CategoryManagerModal';
@@ -23,9 +22,6 @@ const AUTH_KEY = 'cloudnav_auth_token';
 const WEBDAV_CONFIG_KEY = 'cloudnav_webdav_config';
 const AI_CONFIG_KEY = 'cloudnav_ai_config';
 
-// --- 关键：定义所有可用的主题 ---
-// 这个数组必须与您的 `index.html` 中 FOUC 脚本里的 `allThemes` 定义完全一致！
-// 任何不匹配都可能导致主题切换异常。
 const allThemes = [
   { class: 'light-theme-default', name: '默认光线模式', isDark: false },
   { class: 'light-theme-warm', name: '暖色光线模式', isDark: false },
@@ -35,52 +31,97 @@ const allThemes = [
   { class: 'dark', name: '深色模式', isDark: true },
 ];
 
+// --- 新增：上下文菜单组件 ---
+interface LinkActionsMenuProps {
+    link: LinkItem;
+    x: number;
+    y: number;
+    onClose: () => void;
+    onTogglePin: (id: string, e: React.MouseEvent) => void;
+    onEdit: (link: LinkItem, e: React.MouseEvent) => void; // 传递完整的 LinkItem
+    onDelete: (id: string, e: React.MouseEvent) => void;
+}
+
+const LinkActionsMenu: React.FC<LinkActionsMenuProps> = ({
+    link, x, y, onClose, onTogglePin, onEdit, onDelete
+}) => {
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // 点击外部关闭菜单
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [onClose]);
+
+    // 防止菜单内部点击事件冒泡到 document 导致菜单立即关闭
+    const handleMenuClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+    }, []);
+
+    return (
+        <div
+            ref={menuRef}
+            className="absolute z-50 bg-card-bg border border-border-default rounded-lg shadow-lg py-1 text-sm whitespace-nowrap"
+            style={{ left: x, top: y }}
+            onClick={handleMenuClick}
+            onContextMenu={(e) => e.preventDefault()} // 防止菜单的右键再次触发浏览器菜单
+        >
+            <button
+                onClick={(e) => { onTogglePin(link.id, e); onClose(); }}
+                className="flex items-center gap-2 px-4 py-2 w-full text-left text-text-default hover:bg-primary/5 hover:text-primary"
+            >
+                <Pin size={16} className={link.pinned ? "fill-current text-primary" : "text-secondary"} />
+                {link.pinned ? '取消置顶' : '置顶'}
+            </button>
+            <button
+                onClick={(e) => { onEdit(link, e); onClose(); }} // 传递完整的 link 对象
+                className="flex items-center gap-2 px-4 py-2 w-full text-left text-text-default hover:bg-primary/5 hover:text-primary"
+            >
+                <Edit2 size={16} className="text-secondary" />
+                编辑
+            </button>
+            <button
+                onClick={(e) => { onDelete(link.id, e); onClose(); }}
+                className="flex items-center gap-2 px-4 py-2 w-full text-left text-text-default hover:bg-danger/5 hover:text-danger"
+            >
+                <Trash2 size={16} className="text-danger" />
+                删除
+            </button>
+        </div>
+    );
+};
+
+
 function App() {
-  // --- State ---
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // --- 主题状态：存储当前激活的主题的 CSS 类名 ---
   const [currentThemeClass, setCurrentThemeClass] = useState(() => {
-    // 页面初次加载时，FOUC 脚本已经在 `<html>` 元素上设置了正确的主题类。
-    // 我们在这里读取它作为初始状态，确保 React 应用与页面初始主题同步。
     const htmlClasses = document.documentElement.className.split(' ');
     const activeTheme = allThemes.find(theme => htmlClasses.includes(theme.class));
-    // 如果因某种原因没有找到匹配的主题（理论上不应该发生），则回退到第一个主题。
     return activeTheme ? activeTheme.class : allThemes[0].class;
   });
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Category Security State
   const [unlockedCategoryIds, setUnlockedCategoryIds] = useState<Set<string>>(new Set());
-
-  // WebDAV Config State
   const [webDavConfig, setWebDavConfig] = useState<WebDavConfig>(() => {
       const saved = localStorage.getItem(WEBDAV_CONFIG_KEY);
-      if (saved) {
-          try { return JSON.parse(saved); } catch (e) { console.error("Failed to parse WebDAV config from localStorage", e); }
-      }
+      if (saved) { try { return JSON.parse(saved); } catch (e) { console.error("Failed to parse WebDAV config from localStorage", e); } }
       return { url: '', username: '', password: '', enabled: false };
   });
-
-  // AI Config State
   const [aiConfig, setAiConfig] = useState<AIConfig>(() => {
       const saved = localStorage.getItem(AI_CONFIG_KEY);
-      if (saved) {
-          try { return JSON.parse(saved); } catch (e) { console.error("Failed to parse AI config from localStorage", e); }
-      }
-      return {
-          provider: 'gemini',
-          apiKey: process.env.API_KEY || '', // 确保您的构建环境正确注入了 API_KEY
-          baseUrl: '',
-          model: 'gemini-2.5-flash'
-      };
+      if (saved) { try { return JSON.parse(saved); } catch (e) { console.error("Failed to parse AI config from localStorage", e); } }
+      return { provider: 'gemini', apiKey: process.env.API_KEY || '', baseUrl: '', model: 'gemini-2.5-flash' };
   });
 
-  // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCatManagerOpen, setIsCatManagerOpen] = useState(false);
@@ -92,11 +133,13 @@ function App() {
   const [editingLink, setEditingLink] = useState<LinkItem | undefined>(undefined);
   const [prefillLink, setPrefillLink] = useState<Partial<LinkItem> | undefined>(undefined);
 
-  // Sync State
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [authToken, setAuthToken] = useState<string>('');
 
-  // --- Helpers & Sync Logic ---
+  // --- 新增状态：控制自定义上下文菜单 ---
+  const [contextMenu, setContextMenu] = useState<{ link: LinkItem; x: number; y: number } | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressActivatedRef = useRef(false); // 标记是否长按已激活，用于阻止点击事件
 
   const loadFromLocal = () => {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -121,10 +164,7 @@ function App() {
     try {
         const response = await fetch('/api/storage', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-auth-password': token
-            },
+            headers: { 'Content-Type': 'application/json', 'x-auth-password': token },
             body: JSON.stringify({ links: newLinks, categories: newCategories })
         });
 
@@ -133,7 +173,7 @@ function App() {
             localStorage.removeItem(AUTH_KEY);
             setIsAuthOpen(true);
             setSyncStatus('error');
-            alert('认证失败，请重新登录。'); // 用户友好提示
+            alert('认证失败，请重新登录。');
             return false;
         }
 
@@ -145,50 +185,34 @@ function App() {
     } catch (error) {
         console.error("Sync failed", error);
         setSyncStatus('error');
-        alert(`数据同步失败: ${error instanceof Error ? error.message : String(error)}`); // 用户友好提示
+        alert(`数据同步失败: ${error instanceof Error ? error.message : String(error)}`);
         return false;
     }
   };
 
-  const updateData = (newLinks: LinkItem[], newCategories: Category[]) => {
-      // 1. Optimistic UI Update
+  const updateData = useCallback((newLinks: LinkItem[], newCategories: Category[]) => {
       setLinks(newLinks);
       setCategories(newCategories);
-
-      // 2. Save to Local Cache
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ links: newLinks, categories: newCategories }));
-
-      // 3. Sync to Cloud (if authenticated)
       if (authToken) {
           syncToCloud(newLinks, newCategories, authToken);
       }
-  };
-
-  // --- Effects ---
+  }, [authToken, syncToCloud]);
 
   useEffect(() => {
-    // 加载认证 Token
     const savedToken = localStorage.getItem(AUTH_KEY);
     if (savedToken) setAuthToken(savedToken);
 
-    // 处理书签小工具的 URL 参数
     const urlParams = new URLSearchParams(window.location.search);
     const addUrl = urlParams.get('add_url');
     if (addUrl) {
         const addTitle = urlParams.get('add_title') || '';
-        // 清理 URL 参数，避免刷新时重复触发
         window.history.replaceState({}, '', window.location.pathname);
-
-        setPrefillLink({
-            title: addTitle,
-            url: addUrl,
-            categoryId: 'common' // 默认分类，弹窗会允许用户选择
-        });
+        setPrefillLink({ title: addTitle, url: addUrl, categoryId: 'common' });
         setEditingLink(undefined);
         setIsModalOpen(true);
     }
 
-    // 初始化数据获取：优先从云端，其次本地存储
     const initData = async () => {
         try {
             const res = await fetch('/api/storage');
@@ -198,55 +222,43 @@ function App() {
                     setLinks(data.links);
                     setCategories(data.categories || DEFAULT_CATEGORIES);
                     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-                    return; // 数据已从云端加载
+                    return;
                 }
             }
         } catch (e) {
             console.warn("Failed to fetch from cloud, falling back to local storage.", e);
         }
-        // 如果云端失败或没有数据，则从本地加载
         loadFromLocal();
     };
-
     initData();
-  }, []); // 依赖数组为空，只在组件挂载时运行一次
+  }, []);
 
-  // --- 关键 useEffect：监听 currentThemeClass 变化，更新 localStorage 和 <html> 上的类 ---
   useEffect(() => {
-    // 1. 更新 localStorage，以便用户下次访问时能记住主题
     localStorage.setItem('theme', currentThemeClass);
-
-    // 2. 更新 <html> 元素上的 CSS 类，实际改变主题样式
-    // 遍历所有可能的主题类，先移除它们，确保 <html> 上只有一个主题类处于激活状态
     allThemes.forEach(theme => document.documentElement.classList.remove(theme.class));
-    // 添加当前激活的主题类
     document.documentElement.classList.add(currentThemeClass);
-  }, [currentThemeClass]); // 仅当 currentThemeClass 变化时运行
+  }, [currentThemeClass]);
 
-  // --- 主题切换函数 ---
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     const currentIndex = allThemes.findIndex(theme => theme.class === currentThemeClass);
-    // 循环到下一个主题，如果到末尾则回到第一个
     const nextIndex = (currentIndex + 1) % allThemes.length;
     setCurrentThemeClass(allThemes[nextIndex].class);
-  };
+  }, [currentThemeClass]);
 
-  // --- 派生状态：用于判断是否是深色模式，以显示正确的图标（月亮/太阳） ---
-  const isDarkMode = allThemes.find(theme => theme.class === currentThemeClass)?.isDark || false;
+  const isDarkMode = useMemo(() => allThemes.find(theme => theme.class === currentThemeClass)?.isDark || false, [currentThemeClass]);
 
-  // --- Actions ---
+  // --- 新增：关闭上下文菜单的函数 ---
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
 
   const handleLogin = async (password: string): Promise<boolean> => {
       try {
         const response = await fetch('/api/storage', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-auth-password': password
-            },
-            body: JSON.stringify({ links, categories }) // 登录时也尝试同步当前数据
+            headers: { 'Content-Type': 'application/json', 'x-auth-password': password },
+            body: JSON.stringify({ links, categories })
         });
-
         if (response.ok) {
             setAuthToken(password);
             localStorage.setItem(AUTH_KEY, password);
@@ -265,55 +277,64 @@ function App() {
   };
 
   const handleImportConfirm = (newLinks: LinkItem[], newCategories: Category[]) => {
-      // 合并分类：避免重复的名称/ID
       const mergedCategories = [...categories];
       newCategories.forEach(nc => {
           if (!mergedCategories.some(c => c.id === nc.id || c.name === nc.name)) {
               mergedCategories.push(nc);
           }
       });
-
       const mergedLinks = [...links, ...newLinks];
       updateData(mergedLinks, mergedCategories);
       setIsImportModalOpen(false);
       alert(`成功导入 ${newLinks.length} 个新书签!`);
   };
 
-  const handleAddLink = (data: Omit<LinkItem, 'id' | 'createdAt'>) => {
+  const handleAddLink = useCallback((data: Omit<LinkItem, 'id' | 'createdAt'>) => {
     if (!authToken) { setIsAuthOpen(true); return; }
-    const newLink: LinkItem = {
-      ...data,
-      id: Date.now().toString(),
-      createdAt: Date.now()
-    };
+    const newLink: LinkItem = { ...data, id: Date.now().toString(), createdAt: Date.now() };
     updateData([newLink, ...links], categories);
-    setPrefillLink(undefined); // 清除预填充数据
-  };
+    setPrefillLink(undefined);
+  }, [authToken, links, categories, updateData]);
 
-  const handleEditLink = (data: Omit<LinkItem, 'id' | 'createdAt'>) => {
+  // --- 修改：用于 LinkModal 的编辑函数 ---
+  const handleEditLinkForModal = useCallback((data: Omit<LinkItem, 'id' | 'createdAt'>) => {
     if (!authToken) { setIsAuthOpen(true); return; }
     if (!editingLink) return;
     const updated = links.map(l => l.id === editingLink.id ? { ...l, ...data } : l);
     updateData(updated, categories);
     setEditingLink(undefined);
-  };
+  }, [authToken, editingLink, links, categories, updateData]);
 
-  const handleDeleteLink = (id: string, e: React.MouseEvent) => {
+  // --- 新增：用于 LinkActionsMenu 的编辑函数 ---
+  const handleEditLinkFromMenu = useCallback((linkToEdit: LinkItem, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!authToken) { setIsAuthOpen(true); return; }
+    setEditingLink(linkToEdit); // 设置正在编辑的完整链接对象
+    setIsModalOpen(true);
+    closeContextMenu();
+  }, [authToken, closeContextMenu]);
+
+  // --- 修改：handleDeleteLink 以便从菜单调用 ---
+  const handleDeleteLink = useCallback((id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!authToken) { setIsAuthOpen(true); return; }
     if (confirm('确定删除此链接吗?')) {
       updateData(links.filter(l => l.id !== id), categories);
+      closeContextMenu(); // 删除后关闭菜单
     }
-  };
+  }, [authToken, links, categories, updateData, closeContextMenu]);
 
-  const togglePin = (id: string, e: React.MouseEvent) => {
+  // --- 修改：togglePin 以便从菜单调用 ---
+  const togglePin = useCallback((id: string, e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (!authToken) { setIsAuthOpen(true); return; }
       const updated = links.map(l => l.id === id ? { ...l, pinned: !l.pinned } : l);
       updateData(updated, categories);
-  };
+      closeContextMenu(); // 置顶后关闭菜单
+  }, [authToken, links, categories, updateData, closeContextMenu]);
 
   const handleSaveAIConfig = (config: AIConfig) => {
       setAiConfig(config);
@@ -321,10 +342,7 @@ function App() {
       alert('AI 配置已保存！');
   };
 
-  // --- Category Management & Security ---
-
   const handleCategoryClick = (cat: Category) => {
-      // 如果分类有密码且未解锁
       if (cat.password && !unlockedCategoryIds.has(cat.id)) {
           setCatAuthModalData(cat);
           setSidebarOpen(false);
@@ -337,34 +355,30 @@ function App() {
   const handleUnlockCategory = (catId: string) => {
       setUnlockedCategoryIds(prev => new Set(prev).add(catId));
       setSelectedCategory(catId);
-      setCatAuthModalData(null); // 解锁后关闭弹窗
+      setCatAuthModalData(null);
   };
 
-  const handleUpdateCategories = (newCats: Category[]) => {
+  const handleUpdateCategories = useCallback((newCats: Category[]) => {
       if (!authToken) { setIsAuthOpen(true); return; }
       updateData(links, newCats);
       alert('分类已更新！');
-  };
+  }, [authToken, links, updateData]);
 
-  const handleDeleteCategory = (catId: string) => {
+  const handleDeleteCategory = useCallback((catId: string) => {
       if (!authToken) { setIsAuthOpen(true); return; }
       if (!confirm('确定删除此分类吗？该分类下的链接将被移动到“常用”分类。')) return;
 
       const newCats = categories.filter(c => c.id !== catId);
-      // 将被删除分类下的链接移动到 'common' 分类
       const targetId = 'common';
       const newLinks = links.map(l => l.categoryId === catId ? { ...l, categoryId: targetId } : l);
 
-      // 确保 'common' 分类始终存在
       if (newCats.length === 0) {
           newCats.push(DEFAULT_CATEGORIES[0]);
       }
-
       updateData(newLinks, newCats);
       alert('分类已删除！');
-  };
+  }, [authToken, links, categories, updateData]);
 
-  // --- WebDAV Config ---
   const handleSaveWebDavConfig = (config: WebDavConfig) => {
       setWebDavConfig(config);
       localStorage.setItem(WEBDAV_CONFIG_KEY, JSON.stringify(config));
@@ -377,27 +391,19 @@ function App() {
       alert('数据已成功恢复！');
   };
 
-  // --- Filtering & Memo ---
-
-  // 辅助函数：检查分类是否“锁定”（有密码且未解锁）
-  const isCategoryLocked = (catId: string) => {
+  const isCategoryLocked = useCallback((catId: string) => {
       const cat = categories.find(c => c.id === catId);
       if (!cat || !cat.password) return false;
       return !unlockedCategoryIds.has(catId);
-  };
+  }, [categories, unlockedCategoryIds]);
 
   const pinnedLinks = useMemo(() => {
-      // 不显示属于锁定分类的置顶链接
       return links.filter(l => l.pinned && !isCategoryLocked(l.categoryId));
-  }, [links, categories, unlockedCategoryIds]);
+  }, [links, isCategoryLocked]);
 
   const displayedLinks = useMemo(() => {
     let result = links;
-
-    // 安全过滤：始终隐藏来自锁定分类的链接
     result = result.filter(l => !isCategoryLocked(l.categoryId));
-
-    // 搜索过滤
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return result.filter(l =>
@@ -406,80 +412,93 @@ function App() {
         (l.description && l.description.toLowerCase().includes(q))
       );
     }
-
-    // 分类过滤
     if (selectedCategory !== 'all') {
       result = result.filter(l => l.categoryId === selectedCategory);
     }
-
-    // 排序：按创建时间降序
     return result.sort((a, b) => b.createdAt - a.createdAt);
-  }, [links, selectedCategory, searchQuery, categories, unlockedCategoryIds]);
+  }, [links, selectedCategory, searchQuery, isCategoryLocked]);
 
 
-  // --- Render Components ---
+  const renderLinkCard = (link: LinkItem) => {
+    // --- 新增：长按和右键点击事件处理 ---
+    const handleContextMenu = (e: React.MouseEvent) => {
+      e.preventDefault(); // 阻止浏览器默认右键菜单
+      e.stopPropagation(); // 阻止事件冒泡
+      setContextMenu({ link, x: e.clientX, y: e.clientY });
+    };
 
-  const renderLinkCard = (link: LinkItem) => (
-    <a
-        key={link.id}
-        href={link.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        // 使用 CSS 变量定义的 Tailwind 类
-        className="group relative flex items-center gap-3 p-3 bg-card-bg rounded-xl border border-border-default shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-        title={link.description || link.url} // 原生工具提示
-    >
-        {/* 紧凑型图标 */}
-        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold uppercase shrink-0">
-            {link.icon ? <img src={link.icon} alt={link.title.charAt(0)} className="w-5 h-5"/> : link.title.charAt(0)}
-        </div>
+    const handleMouseDown = (e: React.MouseEvent) => {
+      // 仅处理左键点击的长按
+      if (e.button === 0) {
+        longPressTimerRef.current = setTimeout(() => {
+          isLongPressActivatedRef.current = true;
+          setContextMenu({ link, x: e.clientX, y: e.clientY });
+        }, 500); // 500ms 长按
+      }
+    };
 
-        {/* 文本内容 */}
-        <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm text-text-default truncate group-hover:text-primary transition-colors">
-                {link.title}
-            </h3>
-            {/* 自定义工具提示，用于显示描述 */}
-            {link.description && (
-               <div className="tooltip-custom absolute left-0 -top-8 w-max max-w-[200px] bg-black text-white text-xs p-2 rounded opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-20 pointer-events-none truncate">
-                  {link.description}
-               </div>
-            )}
-        </div>
+    const handleMouseUp = (e: React.MouseEvent) => {
+      clearTimeout(longPressTimerRef.current!);
+      if (isLongPressActivatedRef.current) {
+        e.preventDefault(); // 如果是长按激活的，阻止默认的点击行为（如跳转链接）
+        isLongPressActivatedRef.current = false;
+      }
+    };
 
-        {/* 悬停操作按钮 */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 bg-card-bg/90 pl-2">
-            <button
-                onClick={(e) => togglePin(link.id, e)}
-                className={`p-1 rounded-md transition-colors ${link.pinned ? 'text-primary bg-primary/10' : 'text-secondary hover:text-primary hover:bg-primary/5'}`}
-                title="置顶"
-            >
-                <Pin size={13} className={link.pinned ? "fill-current" : ""} />
-            </button>
-            <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingLink(link); setIsModalOpen(true); }}
-                className="p-1 text-secondary hover:text-primary hover:bg-primary/5 rounded-md"
-                title="编辑"
-            >
-                <Edit2 size={13} />
-            </button>
-            <button
-                onClick={(e) => handleDeleteLink(link.id, e)}
-                className="p-1 text-secondary hover:text-danger hover:bg-danger/5 rounded-md"
-                title="删除"
-            >
-                <Trash2 size={13} />
-            </button>
-        </div>
-    </a>
-  );
+    const handleMouseLeave = (e: React.MouseEvent) => {
+      // 鼠标离开卡片时，如果正在计时，则取消长按
+      clearTimeout(longPressTimerRef.current!);
+      isLongPressActivatedRef.current = false;
+    };
+
+    // 阻止长按后的点击事件触发链接跳转
+    const handleClick = (e: React.MouseEvent) => {
+        if (isLongPressActivatedRef.current) {
+            e.preventDefault();
+            isLongPressActivatedRef.current = false; // 重置
+        }
+    };
+
+    return (
+      <a
+          key={link.id}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative flex items-center gap-3 p-3 bg-card-bg rounded-xl border border-border-default shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+          title={link.description || link.url}
+          onContextMenu={handleContextMenu} // 右键点击
+          onMouseDown={handleMouseDown}     // 左键长按开始
+          onMouseUp={handleMouseUp}         // 左键长按结束或短按
+          onMouseLeave={handleMouseLeave}   // 鼠标离开
+          onClick={handleClick}             // 阻止长按后的默认点击
+      >
+          {/* Compact Icon */}
+          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold uppercase shrink-0">
+              {link.icon ? <img src={link.icon} alt={link.title.charAt(0)} className="w-5 h-5"/> : link.title.charAt(0)}
+          </div>
+
+          {/* Text Content */}
+          <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm text-text-default truncate group-hover:text-primary transition-colors">
+                  {link.title}
+              </h3>
+              {link.description && (
+                 <div className="tooltip-custom absolute left-0 -top-8 w-max max-w-[200px] bg-black text-white text-xs p-2 rounded opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-20 pointer-events-none truncate">
+                    {link.description}
+                 </div>
+              )}
+          </div>
+
+          {/* 原有的悬停操作按钮 div 已移除 */}
+      </a>
+    );
+  };
 
 
   return (
-    // 整个应用的根容器，设置默认背景和文本颜色，以及过渡效果
     <div className="flex h-screen overflow-hidden bg-bg-default text-text-default transition-colors duration-300">
 
-      {/* 模态框组件 */}
       <AuthModal isOpen={isAuthOpen} onLogin={handleLogin} />
       <CategoryAuthModal
         isOpen={!!catAuthModalData}
@@ -519,7 +538,6 @@ function App() {
         onUpdateLinks={(newLinks) => updateData(newLinks, categories)}
       />
 
-      {/* 侧边栏移动端覆盖层 */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 lg:hidden backdrop-blur-sm"
@@ -527,7 +545,6 @@ function App() {
         />
       )}
 
-      {/* 侧边栏 */}
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out
@@ -535,16 +552,13 @@ function App() {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-border-default shrink-0">
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               云航 CloudNav
             </span>
         </div>
 
-        {/* 分类列表 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-hide">
-            {/* 全部链接按钮 */}
             <button
               onClick={() => { setSelectedCategory('all'); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
@@ -557,7 +571,6 @@ function App() {
               <span>全部链接</span>
             </button>
 
-            {/* 分类目录标题和管理按钮 */}
             <div className="flex items-center justify-between pt-4 pb-2 px-4">
                <span className="text-xs font-semibold text-secondary uppercase tracking-wider">分类目录</span>
                <button
@@ -569,7 +582,6 @@ function App() {
                </button>
             </div>
 
-            {/* 各个分类按钮 */}
             {categories.map(cat => {
                 const isLocked = cat.password && !unlockedCategoryIds.has(cat.id);
                 return (
@@ -592,9 +604,7 @@ function App() {
             })}
         </div>
 
-        {/* 侧边栏底部操作区 */}
         <div className="p-4 border-t border-border-default bg-card-bg/50 shrink-0">
-
             <div className="grid grid-cols-3 gap-2 mb-2">
                 <button
                     onClick={() => { if(!authToken) setIsAuthOpen(true); else setIsImportModalOpen(true); }}
@@ -646,18 +656,13 @@ function App() {
         </div>
       </aside>
 
-      {/* 主要内容区域 */}
       <main className="flex-1 flex flex-col h-full bg-bg-default overflow-hidden relative">
-
-        {/* 头部导航栏 */}
         <header className="h-16 px-4 lg:px-8 flex items-center justify-between bg-card-bg/80 backdrop-blur-md border-b border-border-default sticky top-0 z-10 shrink-0">
           <div className="flex items-center gap-4 flex-1">
-            {/* 移动端侧边栏切换按钮 */}
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 -ml-2 text-secondary">
               <Menu size={24} />
             </button>
 
-            {/* 搜索框 */}
             <div className="relative w-full max-w-md hidden sm:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" size={16} />
               <input
@@ -670,21 +675,17 @@ function App() {
             </div>
           </div>
 
-          {/* 右侧操作按钮 */}
           <div className="flex items-center gap-2">
-            {/* 主题切换按钮 */}
             <button onClick={toggleTheme} className="p-2 rounded-full text-secondary hover:bg-primary/5">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            {/* 登录按钮（未认证时显示） */}
             {!authToken && (
                 <button onClick={() => setIsAuthOpen(true)} className="hidden sm:flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full text-xs font-medium text-primary">
                     <Cloud size={14} /> 登录
                 </button>
             )}
 
-            {/* 添加链接按钮 */}
             <button
               onClick={() => { if(!authToken) setIsAuthOpen(true); else { setEditingLink(undefined); setIsModalOpen(true); }}}
               className="flex items-center gap-2 bg-primary hover:bg-primary/80 text-white px-3 py-2 rounded-full text-sm font-medium shadow-lg shadow-primary/30"
@@ -694,10 +695,7 @@ function App() {
           </div>
         </header>
 
-        {/* 内容滚动区域 */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
-
-            {/* 1. 置顶链接区域 */}
             {pinnedLinks.length > 0 && !searchQuery && (selectedCategory === 'all') && (
                 <section>
                     <div className="flex items-center gap-2 mb-4">
@@ -712,13 +710,11 @@ function App() {
                 </section>
             )}
 
-            {/* 2. 主要链接网格区域 */}
             <section>
-                 {/* 欢迎信息（仅在没有置顶、没有搜索且在“所有链接”分类时显示） */}
                  {(!pinnedLinks.length && !searchQuery && selectedCategory === 'all') && (
                     <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary to-accent text-white shadow-lg flex items-center justify-between">
                          <div>
-                            <h1 className="text-xl font-bold">欢迎您 👋</h1>
+                            <h1 className="text-xl font-bold">早安 👋</h1>
                             <p className="text-sm opacity-90 mt-1">
                                 {links.length} 个链接 · {categories.length} 个分类
                             </p>
@@ -727,7 +723,6 @@ function App() {
                     </div>
                  )}
 
-                 {/* 当前分类/搜索结果标题 */}
                  <div className="flex items-center justify-between mb-4">
                      <h2 className="text-sm font-bold uppercase tracking-wider text-secondary flex items-center gap-2">
                          {selectedCategory === 'all'
@@ -742,7 +737,6 @@ function App() {
                      </h2>
                  </div>
 
-                 {/* 链接列表或空状态提示 */}
                  {displayedLinks.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-secondary border-2 border-dashed border-border-default rounded-xl">
                         {isCategoryLocked(selectedCategory) ? (
@@ -770,11 +764,23 @@ function App() {
         </div>
       </main>
 
-      {/* 链接编辑/添加模态框 */}
+      {/* 在 App 组件的根部渲染 LinkActionsMenu */}
+      {contextMenu && (
+        <LinkActionsMenu
+          link={contextMenu.link}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={closeContextMenu}
+          onTogglePin={togglePin}
+          onEdit={handleEditLinkFromMenu} // 传递给菜单
+          onDelete={handleDeleteLink}
+        />
+      )}
+
       <LinkModal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingLink(undefined); setPrefillLink(undefined); }}
-        onSave={editingLink ? handleEditLink : handleAddLink}
+        onSave={editingLink ? handleEditLinkForModal : handleAddLink} // 传递给模态框
         categories={categories}
         initialData={editingLink || (prefillLink as LinkItem)}
         aiConfig={aiConfig}
