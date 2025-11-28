@@ -4,25 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>云航 CloudNav - 首页</title>
+    <!-- 确保您的 output.css 路径正确，并且它包含了 Tailwind CSS 的所有样式 -->
     <link rel="stylesheet" href="./src/output.css">
-    <!-- 将 Tailwind CSS 的配置移动到 output.css 中，或者确保您的构建流程能够处理它 -->
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
-    <!-- <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#6366f1', // Indigo 500
-                        secondary: '#a78bfa', // Violet 400
-                        accent: '#fde047', // Yellow 300
-                        card: '#1e293b', // Slate 800
-                        background: '#0f172a', // Slate 900
-                    }
-                }
-            }
-        }
-    </script> -->
+    <!-- 如果您之前有内联的 Tailwind 配置，现在应该通过 output.css 来管理 -->
 </head>
 <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors duration-300">
     <div class="flex min-h-screen">
@@ -30,8 +14,7 @@
         <aside class="w-64 bg-white dark:bg-card text-slate-700 dark:text-slate-200 shadow-lg flex flex-col p-4 transition-colors duration-300">
             <!-- Logo and Title -->
             <div class="flex items-center space-x-2 mb-8 mt-2">
-                <!-- Lucide Icons 应该由 React 组件或您的构建工具处理 -->
-                <!-- <Cloud className="w-8 h-8 text-primary" /> -->
+                <!-- Lucide Cloud Icon (使用原始 SVG，因为这里不是 React 组件) -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cloud w-8 h-8 text-primary"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
                 <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-50">云航 CloudNav</h1>
             </div>
@@ -90,6 +73,7 @@
     </div>
 
     <!-- JavaScript for sidebar active state -->
+    <!-- 这个脚本会在每个页面加载时运行，根据当前 URL 高亮侧边栏的正确链接 -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const currentPath = window.location.pathname.split('/').pop(); // e.g., "index.html"
@@ -119,8 +103,8 @@
         });
     </script>
     <!-- React Entry Point -->
+    <!-- 确保这个脚本在所有 React 挂载点之后加载 -->
     <script type="module" src="./src/index.tsx"></script>
     <!-- 如果您有其他脚本，请确保它们在 React 脚本之后加载，或者根据依赖关系调整顺序 -->
-    <!-- <script src="script.js"></script> -->
 </body>
 </html>
