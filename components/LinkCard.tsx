@@ -20,18 +20,12 @@ const LinkCard: React.FC<LinkCardProps> = ({
     onShowContextMenu,
     closeContextMenu,
 }) => {
-    // State for the click-triggered popover (primarily for mobile)
-    const [showClickDescriptionPopover, setShowClickDescriptionPopover] = useState(false);
-    const clickButtonRef = useRef<HTMLButtonElement>(null); // Ref for the Info button
-    const clickPopoverRef = useRef<HTMLDivElement>(null); // Ref for the click popover
+    // 只有一个状态，用于移动端点击触发的描述弹窗
+    const [showDescriptionPopover, setShowDescriptionPopover] = useState(false);
+    const buttonRef = useRef<HTMLButtonElement>(null); // Info 按钮的引用
+    const popoverRef = useRef<HTMLDivElement>(null); // 描述弹窗的引用
 
-    // State for the hover-triggered popover (primarily for desktop)
-    const [showHoverDescriptionPopover, setShowHoverDescriptionPopover] = useState(false);
-    const cardRef = useRef<HTMLAnchorElement>(null); // Ref for the entire LinkCard (<a> tag)
-    const hoverPopoverRef = useRef<HTMLDivElement>(null); // Ref for the hover popover
-    const hoverTimeoutRef = useRef<number | null>(null); // Timeout for hover delay
-
-    // State for popover position (shared for both, calculated based on which is active)
+    // 弹窗位置的状态
     const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
     const longPressTimerRef = useRef<number | null>(null);
@@ -42,8 +36,7 @@ const LinkCard: React.FC<LinkCardProps> = ({
         e.preventDefault();
         e.stopPropagation();
         onShowContextMenu(link, e.clientX, e.clientY);
-        setShowClickDescriptionPopover(false); // 关闭点击描述弹窗
-        setShowHoverDescriptionPopover(false); // 关闭悬浮描述弹窗
+        setShowDescriptionPopover(false); // 关闭描述弹窗
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -51,8 +44,7 @@ const LinkCard: React.FC<LinkCardProps> = ({
             longPressTimerRef.current = setTimeout(() => {
                 isLongPressActivatedRef.current = true;
                 onShowContextMenu(link, e.clientX, e.clientY);
-                setShowClickDescriptionPopover(false);
-                setShowHoverDescriptionPopover(false);
+                setShowDescriptionPopover(false);
             }, 500); // 500ms 长按
         }
     };
@@ -67,17 +59,11 @@ const LinkCard: React.FC<LinkCardProps> = ({
         }
     };
 
-    const handleMouseLeaveCard = () => {
+    const handleMouseLeaveCard = () => { // 仅用于长按清理
         if (longPressTimerRef.current) {
             clearTimeout(longPressTimerRef.current);
         }
         isLongPressActivatedRef.current = false;
-
-        // For hover popover:
-        if (hoverTimeoutRef.current) {
-            clearTimeout(hoverTimeoutRef.current);
-        }
-        setShowHoverDescriptionPopover(false);
     };
 
     const handleClick = (e: React.MouseEvent) => {
@@ -85,116 +71,85 @@ const LinkCard: React.FC<LinkCardProps> = ({
             e.preventDefault();
             isLongPressActivatedRef.current = false;
         }
-        // If it's a normal click on the card itself, close any open popovers
-        setShowClickDescriptionPopover(false);
-        setShowHoverDescriptionPopover(false);
+        // 如果是点击卡片本身，关闭任何打开的弹窗
+        setShowDescriptionPopover(false);
     };
     // --- 结束上下文菜单逻辑 ---
 
-
-    // --- Click-triggered Popover Logic (for mobile) ---
-    const toggleClickDescriptionPopover = (e: React.MouseEvent) => {
+    // --- 移动端点击触发弹窗逻辑 ---
+    const toggleDescriptionPopover = (e: React.MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation(); // Stop propagation to prevent card's default click behavior
-        setShowClickDescriptionPopover(prev => !prev);
-        setShowHoverDescriptionPopover(false); // Ensure hover popover is closed
+        e.stopPropagation(); // 阻止事件冒泡，避免触发卡片的默认点击行为
+        setShowDescriptionPopover(prev => !prev);
         closeContextMenu(); // 关闭全局上下文菜单
     };
 
-    // --- Hover-triggered Popover Logic (for desktop) ---
-    const handleMouseEnterCard = () => {
-        // Only show hover popover on larger screens (desktop)
-        if (window.innerWidth >= 640 && link.description) { // 640px is Tailwind's 'sm' breakpoint
-            if (hoverTimeoutRef.current) {
-                clearTimeout(hoverTimeoutRef.current);
-            }
-            hoverTimeoutRef.current = setTimeout(() => {
-                setShowHoverDescriptionPopover(true);
-                setShowClickDescriptionPopover(false); // Ensure click popover is closed
-            }, 300); // 300ms delay for hover
-        }
-    };
-
-    // --- Shared Popover Positioning Logic ---
+    // --- 弹窗定位逻辑 ---
     const calculatePopoverPosition = useCallback(() => {
-        let triggerRect: DOMRect | null = null;
-        let popoverElem: HTMLDivElement | null = null;
+        if (!buttonRef.current || !popoverRef.current) return;
 
-        if (showClickDescriptionPopover && clickButtonRef.current && clickPopoverRef.current) {
-            triggerRect = clickButtonRef.current.getBoundingClientRect();
-            popoverElem = clickPopoverRef.current;
-        } else if (showHoverDescriptionPopover && cardRef.current && hoverPopoverRef.current) {
-            triggerRect = cardRef.current.getBoundingClientRect();
-            popoverElem = hoverPopoverRef.current;
-        }
-
-        if (!triggerRect || !popoverElem) return;
-
-        // Force a reflow to get accurate popover dimensions if it's just been rendered
-        // (though fixed elements usually yield correct dimensions even if not fully visible yet)
-        const popoverRect = popoverElem.getBoundingClientRect();
+        const triggerRect = buttonRef.current.getBoundingClientRect(); // Info 按钮的位置和尺寸
+        const popoverElem = popoverRef.current;
+        const popoverRect = popoverElem.getBoundingClientRect(); // 弹窗的尺寸
 
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const margin = 10; // Margin from viewport edges and between elements
+        const margin = 16; // 弹窗与视口边缘及触发元素之间的最小间距
 
         let finalTop = 0;
         let finalLeft = 0;
 
-        // --- Horizontal positioning preference: Right -> Left ---
+        // --- 横向定位：优先右侧，其次左侧，最后在视口内居中或对齐 ---
+        // 尝试放置在按钮右侧
         let potentialLeftRight = triggerRect.right + margin;
-        let potentialLeftLeft = triggerRect.left - popoverRect.width - margin;
-
-        let fitsOnRight = (potentialLeftRight + popoverRect.width) < (viewportWidth - margin);
-        let fitsOnLeft = potentialLeftLeft > margin;
-
-        if (fitsOnRight) {
+        if (potentialLeftRight + popoverRect.width <= viewportWidth - margin) {
             finalLeft = potentialLeftRight;
-        } else if (fitsOnLeft) {
-            finalLeft = potentialLeftLeft;
         } else {
-            // Not enough space on either side. Try to center or align with trigger, then adjust.
-            // Fallback: align with trigger's left, then ensure it's within viewport.
-            finalLeft = triggerRect.left;
-            if ((finalLeft + popoverRect.width) > (viewportWidth - margin)) {
-                finalLeft = viewportWidth - popoverRect.width - margin;
+            // 右侧空间不足，尝试放置在按钮左侧
+            let potentialLeftLeft = triggerRect.left - popoverRect.width - margin;
+            if (potentialLeftLeft >= margin) {
+                finalLeft = potentialLeftLeft;
+            } else {
+                // 左右两侧空间都不足，或者都太紧凑。
+                // 默认与按钮左侧对齐，然后强制限制在视口内。
+                finalLeft = triggerRect.left;
+                // 确保不超出视口右侧
+                if (finalLeft + popoverRect.width > viewportWidth - margin) {
+                    finalLeft = viewportWidth - popoverRect.width - margin;
+                }
+                // 确保不超出视口左侧
+                if (finalLeft < margin) {
+                    finalLeft = margin;
+                }
             }
-            if (finalLeft < margin) { // Still off-screen or too close to left edge
-                finalLeft = margin; // Align with left viewport edge
-            }
         }
 
-        // --- Vertical positioning preference: Vertically center with trigger, then adjust to fit viewport ---
-        let potentialTopCentered = triggerRect.top + (triggerRect.height / 2) - (popoverRect.height / 2);
+        // --- 垂直定位：与按钮垂直居中，然后强制限制在视口内 ---
+        finalTop = triggerRect.top + (triggerRect.height / 2) - (popoverRect.height / 2);
 
-        // Adjust if it goes off-screen top
-        if (potentialTopCentered < margin) {
-            potentialTopCentered = margin;
+        // 确保不超出视口底部
+        if (finalTop + popoverRect.height > viewportHeight - margin) {
+            finalTop = viewportHeight - popoverRect.height - margin;
         }
-        // Adjust if it goes off-screen bottom
-        if ((potentialTopCentered + popoverRect.height) > (viewportHeight - margin)) {
-            potentialTopCentered = viewportHeight - popoverRect.height - margin;
+        // 确保不超出视口顶部
+        if (finalTop < margin) {
+            finalTop = margin;
         }
-        // If after bottom adjustment, it's still less than margin (e.g., popover is taller than viewport)
-        if (potentialTopCentered < margin) {
-            potentialTopCentered = margin;
-        }
-
-        finalTop = potentialTopCentered;
 
         setPopoverPosition({ top: finalTop, left: finalLeft });
-    }, [showClickDescriptionPopover, showHoverDescriptionPopover, link.description]); // Recalculate if visibility or description changes
+    }, [showDescriptionPopover]); // 仅当弹窗显示/隐藏状态改变时才重新计算
 
     useEffect(() => {
-        const isPopoverActive = showClickDescriptionPopover || showHoverDescriptionPopover;
-        if (isPopoverActive) {
+        if (showDescriptionPopover) {
+            // 确保在弹窗内容渲染完毕后，其尺寸准确时再进行位置计算
             const timeoutId = setTimeout(() => {
                 calculatePopoverPosition();
-            }, 0); // Use setTimeout for next tick to ensure popover is rendered before calculating dimensions
+            }, 0);
 
+            // 监听窗口大小调整和页面滚动，以便动态更新弹窗位置
             const handleResizeAndScroll = () => calculatePopoverPosition();
             window.addEventListener('resize', handleResizeAndScroll);
-            document.addEventListener('scroll', handleResizeAndScroll, true); // Listen on document for general scroll
+            document.addEventListener('scroll', handleResizeAndScroll, true); // 监听 document 的滚动事件
 
             return () => {
                 clearTimeout(timeoutId);
@@ -202,42 +157,40 @@ const LinkCard: React.FC<LinkCardProps> = ({
                 document.removeEventListener('scroll', handleResizeAndScroll, true);
             };
         }
-    }, [showClickDescriptionPopover, showHoverDescriptionPopover, calculatePopoverPosition]);
+    }, [showDescriptionPopover, calculatePopoverPosition]);
 
-    // Effect to close popover when clicking outside
+    // 监听点击外部事件，关闭弹窗
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
-            const isClickPopoverOpen = showClickDescriptionPopover && clickPopoverRef.current && !clickPopoverRef.current.contains(target) && clickButtonRef.current && !clickButtonRef.current.contains(target);
-            const isHoverPopoverOpen = showHoverDescriptionPopover && hoverPopoverRef.current && !hoverPopoverRef.current.contains(target) && cardRef.current && !cardRef.current.contains(target);
-
-            if (isClickPopoverOpen || isHoverPopoverOpen) {
-                setShowClickDescriptionPopover(false);
-                setShowHoverDescriptionPopover(false);
+            if (
+                showDescriptionPopover &&
+                popoverRef.current && !popoverRef.current.contains(target) && // 点击不在弹窗内部
+                buttonRef.current && !buttonRef.current.contains(target) // 点击不在 Info 按钮内部
+            ) {
+                setShowDescriptionPopover(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [showClickDescriptionPopover, showHoverDescriptionPopover]);
+    }, [showDescriptionPopover]);
 
 
     return (
         <a
-            ref={cardRef} // Assign ref to the entire card for hover detection
             key={link.id}
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
             className="relative flex items-center gap-3 p-3 bg-card-bg rounded-xl border border-border-default shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-            title={link.description || link.url} // 保持原生 title 悬浮提示，与自定义弹窗互不干扰
+            title={link.description || link.url} // **关键：完全依赖原生 title 属性进行桌面端悬浮提示**
             onContextMenu={handleContextMenu}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeaveCard} // Combined mouse leave handler
-            onMouseEnter={handleMouseEnterCard} // Handle mouse enter for hover popover
-            onClick={handleClick} // General click handler for the card
+            onMouseLeave={handleMouseLeaveCard} // 仅用于长按清理，不影响桌面悬浮
+            onClick={handleClick} // 卡片通用点击处理器
         >
             {/* Compact Icon */}
             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold uppercase shrink-0">
@@ -251,39 +204,24 @@ const LinkCard: React.FC<LinkCardProps> = ({
                 </h3>
             </div>
 
-            {/* Description Button (visible only on small screens, hidden on desktop) */}
+            {/* Description Button (仅在小屏幕显示，桌面端隐藏) */}
             {link.description && (
                 <button
-                    ref={clickButtonRef}
-                    onClick={toggleClickDescriptionPopover}
-                    className="ml-2 p-1 rounded-full text-secondary hover:bg-primary/10 hover:text-primary transition-colors z-10 shrink-0 block sm:hidden" // `block sm:hidden` for mobile only
-                    title="查看描述"
+                    ref={buttonRef}
+                    onClick={toggleDescriptionPopover}
+                    className="ml-2 p-1 rounded-full text-secondary hover:bg-primary/10 hover:text-primary transition-colors z-10 shrink-0 block sm:hidden" // `block sm:hidden` 确保仅在移动端显示
+                    title="查看描述" // 这个 title 仅用于移动端 Info 按钮自身的悬浮提示（如果存在）
                 >
                     <Info size={16} />
                 </button>
             )}
 
-            {/* Click-triggered Description Popover (for mobile) */}
-            {showClickDescriptionPopover && link.description && (
+            {/* 移动端点击触发的描述弹窗 */}
+            {showDescriptionPopover && link.description && (
                 <div
-                    ref={clickPopoverRef}
-                    className="fixed z-[999] bg-card-bg border border-border-default rounded-lg shadow-xl p-3 text-xs text-text-default max-w-xs sm:max-w-sm"
-                    onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside popover
-                    style={{
-                        top: popoverPosition.top,
-                        left: popoverPosition.left,
-                    }}
-                >
-                    {link.description}
-                </div>
-            )}
-
-            {/* Hover-triggered Description Popover (for desktop, hidden on mobile) */}
-            {showHoverDescriptionPopover && link.description && (
-                <div
-                    ref={hoverPopoverRef}
-                    className="fixed z-[999] bg-card-bg border border-border-default rounded-lg shadow-xl p-3 text-xs text-text-default max-w-xs sm:max-w-sm hidden sm:block" // `hidden sm:block` for desktop only
-                    onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside popover
+                    ref={popoverRef}
+                    className="fixed z-[999] bg-card-bg border border-border-default rounded-lg shadow-xl p-3 text-xs text-text-default max-w-[calc(100vw-32px)]" // **关键：调整最大宽度，确保横向展示**
+                    onClick={(e) => e.stopPropagation()} // 阻止点击弹窗内部时关闭弹窗
                     style={{
                         top: popoverPosition.top,
                         left: popoverPosition.left,
