@@ -7,6 +7,7 @@
     <title>云航 CloudNav</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Tailwind CSS 配置
       tailwind.config = {
         darkMode: 'class', // 确保这里是 'class'
         theme: {
@@ -14,13 +15,14 @@
             colors: {
               // --- 使用 CSS 变量作为颜色定义 ---
               // 这些 Tailwind 类将从 HTML 元素上定义的 CSS 变量获取实际颜色值
+              // 注意：bg-default 和 text-default 仍然定义，以防组件需要继承页面主色
               'bg-default': 'var(--color-bg-default)',
               'text-default': 'var(--color-text-default)',
               'primary': 'var(--color-primary)',
               'secondary': 'var(--color-secondary)',
               'border-default': 'var(--color-border-default)',
               'accent': 'var(--color-accent)',
-              'card-bg': 'var(--color-card-bg)', // 用于卡片背景
+              'card-bg': 'var(--color-card-bg)', // 用于卡片背景，深色模式和部分光线模式可能不同
               
               // 固定的语义化颜色 (不随主题变化，除非你为它们也定义了变量)
               success: '#48bb78', 
@@ -52,10 +54,11 @@
 
       /* --- CSS 变量定义：根据不同的主题类切换颜色 --- */
 
-      /* 基础光线模式：所有光线模式共用此页面背景和主要文本颜色 */
+      /* 默认 HTML 样式：定义所有光线模式共用的页面背景和文本颜色，以及默认光线模式的组件颜色 */
       html {
-        --color-bg-default: #f9fafb; /* 页面默认背景色 (所有光线模式相同) */
-        --color-text-default: #1e293b; /* 页面默认文本色 (所有光线模式相同) */
+        /* 页面背景和主文本颜色 (所有光线模式共享，与 body 的 bg-gray-50 对应) */
+        --color-bg-default: #f9fafb; /* bg-gray-50 */
+        --color-text-default: #1e293b; /* text-slate-900 */
         
         /* 默认光线模式的组件颜色 */
         --color-primary: #3b82f6; /* blue-500 */
@@ -65,7 +68,7 @@
         --color-card-bg: #ffffff; /* white */
       }
 
-      /* 深色模式：覆盖所有颜色变量 */
+      /* 深色模式：覆盖所有颜色变量，包括页面背景和文本 (与 body 的 dark:bg-slate-900 对应) */
       html.dark {
         --color-bg-default: #0f172a; /* slate-900 */
         --color-text-default: #f8fafc; /* slate-50 */
@@ -77,6 +80,7 @@
       }
 
       /* 光线模式 1: 默认 (light-theme-default) - 仅需覆盖组件颜色，页面背景和文本继承自 `html` */
+      /* 这里的定义与 `html` 的默认值相同，但显式写出以便在主题列表中引用和理解 */
       html.light-theme-default {
         --color-primary: #3b82f6;
         --color-secondary: #64748b;
@@ -85,7 +89,7 @@
         --color-card-bg: #ffffff;
       }
 
-      /* 光线模式 2: 暖色调 (Warm Light) */
+      /* 光线模式 2: 暖色调 (Warm Light) - 仅覆盖组件颜色 */
       html.light-theme-warm {
         --color-primary: #d97706; /* orange-700 */
         --color-secondary: #78350f; /* amber-900 */
@@ -94,7 +98,7 @@
         --color-card-bg: #fef3c7; /* amber-100 */
       }
 
-      /* 光线模式 3: 冷色调 (Cool Light) */
+      /* 光线模式 3: 冷色调 (Cool Light) - 仅覆盖组件颜色 */
       html.light-theme-cool {
         --color-primary: #0ea5e9; /* sky-500 */
         --color-secondary: #38bdf8; /* sky-400 */
@@ -103,7 +107,7 @@
         --color-card-bg: #e0f2fe; /* sky-100 */
       }
 
-      /* 光线模式 4: 极简 (Minimal Light) */
+      /* 光线模式 4: 极简 (Minimal Light) - 仅覆盖组件颜色 */
       html.light-theme-minimal {
         --color-primary: #10b981; /* emerald-500 */
         --color-secondary: #6b7280; /* gray-500 */
@@ -112,7 +116,7 @@
         --color-card-bg: #f9fafb; /* gray-50 */
       }
 
-      /* 光线模式 5: 柔和 (Soft Pastel) */
+      /* 光线模式 5: 柔和 (Soft Pastel) - 仅覆盖组件颜色 */
       html.light-theme-soft {
         --color-primary: #f472b6; /* pink-400 */
         --color-secondary: #f9a8d4; /* pink-300 */
@@ -139,7 +143,6 @@
     <!-- *** START: FOUC Prevention Script (防止页面加载时闪烁) *** -->
     <script>
         (function() {
-            const storedTheme = localStorage.getItem('theme');
             // 定义所有主题，包括深色和所有光线模式
             const allThemes = [
                 { class: 'light-theme-default', name: '默认光线模式', isDark: false },
@@ -152,17 +155,23 @@
             
             let initialThemeClass = allThemes[0].class; // 默认第一个光线主题
 
+            // 尝试从 localStorage 读取主题
+            const storedTheme = localStorage.getItem('theme');
             if (storedTheme) {
-                // 如果 localStorage 中有主题设置，则使用它
-                initialThemeClass = storedTheme;
+                const foundTheme = allThemes.find(theme => theme.class === storedTheme);
+                if (foundTheme) {
+                    initialThemeClass = storedTheme;
+                } else {
+                    // 如果存储的主题不在列表中，则回退到默认
+                    localStorage.removeItem('theme');
+                }
             } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                // 否则，如果系统偏好深色，则设置为深色
+                // 如果 localStorage 中没有，且系统偏好深色，则设置为深色
                 initialThemeClass = 'dark'; 
             }
 
-            // 移除所有可能的主题类
+            // 移除所有可能的主题类，然后添加初始主题类
             allThemes.forEach(theme => document.documentElement.classList.remove(theme.class));
-            // 添加初始主题类
             document.documentElement.classList.add(initialThemeClass);
         })();
     </script>
@@ -170,145 +179,12 @@
 
 </head>
 <!-- 
-    body 的背景和文本颜色现在使用我们自定义的语义化颜色别名，它们的值由 CSS 变量决定。
-    transition-colors duration-300 让颜色切换更平滑。
+    body 的背景和文本颜色现在保持您提供的原始 Tailwind 类。
+    这些类会响应 `html` 上的 `dark` 类。
+    组件内部的颜色将通过 CSS 变量和 Tailwind 的 `bg-card-bg`, `text-primary` 等类来控制。
 -->
-<body class="bg-bg-default text-text-default transition-colors duration-300 min-h-screen">
-    <div class="flex h-screen">
-        <!-- 侧边栏 (模拟导航菜单区域) -->
-        <aside class="w-64 bg-card-bg border-r border-border-default p-4 flex flex-col shadow-lg">
-            <h2 class="text-xl font-bold text-primary mb-6">云航导航</h2>
-            <ul class="space-y-2">
-                <li><a href="#" class="block p-2 rounded-md text-text-default hover:bg-secondary hover:text-white transition-colors">首页</a></li>
-                <li><a href="#" class="block p-2 rounded-md text-text-default hover:bg-secondary hover:text-white transition-colors">我的书签</a></li>
-                <li><a href="#" class="block p-2 rounded-md text-text-default hover:bg-secondary hover:text-white transition-colors">设置</a></li>
-            </ul>
-            <div class="mt-auto pt-4 border-t border-border-default">
-                <!-- "添加书签" 按钮，现在也作为主题切换器 -->
-                <button id="theme-toggle" class="w-full flex items-center justify-center p-2 rounded-md bg-primary text-white hover:bg-opacity-90 transition-colors shadow-md">
-                    <svg id="theme-icon" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <!-- 初始图标占位符，JS会替换 -->
-                    </svg>
-                    添加书签
-                </button>
-                <p class="text-sm text-secondary mt-2 text-center">当前主题：<span id="current-mode-display" class="font-medium"></span></p>
-            </div>
-        </aside>
-
-        <!-- 主内容区域 -->
-        <main class="flex-1 p-8 overflow-y-auto">
-            <h1 class="text-3xl font-bold text-primary mb-6">我的书签</h1>
-            <p class="text-secondary mb-8">点击左侧“添加书签”按钮，切换深色模式和五种光线模式。</p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- 示例书签卡片 1 -->
-                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default">
-                    <h3 class="text-xl font-semibold text-primary mb-2">Google 搜索</h3>
-                    <p class="text-secondary mb-4">全球领先的搜索引擎，快速查找信息。</p>
-                    <a href="https://google.com" target="_blank" class="inline-block px-4 py-2 bg-accent text-white rounded-md hover:opacity-90 transition-opacity">访问网站</a>
-                </div>
-
-                <!-- 示例书签卡片 2 -->
-                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default">
-                    <h3 class="text-xl font-semibold text-primary mb-2">GitHub 代码托管</h3>
-                    <p class="text-secondary mb-4">开发者社区和代码协作平台。</p>
-                    <a href="https://github.com" target="_blank" class="inline-block px-4 py-2 bg-accent text-white rounded-md hover:opacity-90 transition-opacity">访问网站</a>
-                </div>
-
-                <!-- 示例书签卡片 3 -->
-                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default">
-                    <h3 class="text-xl font-semibold text-primary mb-2">Tailwind CSS</h3>
-                    <p class="text-secondary mb-4">一个实用至上的 CSS 框架，用于快速构建自定义 UI。</p>
-                    <a href="https://tailwindcss.com" target="_blank" class="inline-block px-4 py-2 bg-accent text-white rounded-md hover:opacity-90 transition-opacity">访问网站</a>
-                </div>
-
-                <!-- 更多书签卡片占位符 -->
-                <div class="bg-card-bg p-6 rounded-lg shadow-md border border-border-default text-center flex items-center justify-center">
-                    <p class="text-secondary">在此处添加更多书签...</p>
-                </div>
-            </div>
-
-            <!-- 其他面板内容示例 -->
-            <div class="mt-8 p-6 bg-card-bg rounded-lg shadow-md border border-border-default">
-                <h3 class="text-xl font-semibold text-primary mb-3">设置面板</h3>
-                <p class="text-secondary mb-4">这是一个模拟的设置区域，其颜色也会随主题变化。</p>
-                <div class="flex items-center space-x-4">
-                    <label class="flex items-center">
-                        <input type="checkbox" class="form-checkbox h-5 w-5 text-primary rounded" checked>
-                        <span class="ml-2 text-text-default">启用通知</span>
-                    </label>
-                    <button class="px-4 py-2 rounded-md bg-primary text-white hover:opacity-90 transition-opacity">保存设置</button>
-                    <button class="px-4 py-2 rounded-md bg-secondary text-white hover:opacity-90 transition-opacity">取消</button>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- 您的 React 应用入口脚本 -->
-    <script type="module" src="/index.tsx"></script>
-
-    <!-- *** START: Theme Toggle JavaScript (主题切换逻辑) *** -->
-    <script>
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
-        const htmlElement = document.documentElement; // 获取 <html> 元素
-        const currentModeDisplay = document.getElementById('current-mode-display'); // 获取显示当前模式的元素
-
-        // 定义所有主题，包括深色和所有光线模式
-        const allThemes = [
-            { class: 'light-theme-default', name: '默认光线模式', isDark: false },
-            { class: 'light-theme-warm', name: '暖色光线模式', isDark: false },
-            { class: 'light-theme-cool', name: '冷色光线模式', isDark: false },
-            { class: 'light-theme-minimal', name: '极简光线模式', isDark: false },
-            { class: 'light-theme-soft', name: '柔和光线模式', isDark: false },
-            { class: 'dark', name: '深色模式', isDark: true },
-        ];
-        
-        let currentThemeIndex = 0; // 初始主题索引
-
-        // --- SVG 图标定义 ---
-        // 太阳图标 (表示当前是光线模式，点击后将切换到深色模式)
-        const sunIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>`;
-        // 月亮图标 (表示当前是深色模式，点击后将切换到光线模式)
-        const moonIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>`;
-
-        // --- 辅助函数：更新按钮图标和显示文本 ---
-        function updateThemeUI() {
-            const currentTheme = allThemes[currentThemeIndex];
-
-            // 移除所有主题类
-            allThemes.forEach(theme => htmlElement.classList.remove(theme.class));
-            // 添加当前主题类
-            htmlElement.classList.add(currentTheme.class);
-            localStorage.setItem('theme', currentTheme.class); // 保存当前主题
-
-            // 根据当前主题是否为深色来显示图标
-            if (currentTheme.isDark) {
-                themeIcon.innerHTML = sunIcon; // 如果当前是深色，显示太阳图标 (表示点击后会切换到光线模式)
-            } else {
-                themeIcon.innerHTML = moonIcon; // 如果当前是光线，显示月亮图标 (表示点击后会切换到深色模式)
-            }
-            currentModeDisplay.textContent = currentTheme.name;
-        }
-
-        // --- FOUC 脚本后，初始化主题索引和 UI ---
-        // 找到当前应用的主题类在 allThemes 数组中的索引
-        const initialThemeClassFromFOUC = localStorage.getItem('theme') || 
-                                          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : allThemes[0].class);
-        const foundIndex = allThemes.findIndex(theme => theme.class === initialThemeClassFromFOUC);
-        if (foundIndex !== -1) {
-            currentThemeIndex = foundIndex;
-        } else {
-            currentThemeIndex = 0; // 如果找不到，默认为第一个主题
-        }
-        updateThemeUI(); // 页面加载时立即更新 UI
-
-        // --- 切换模式的事件监听器 ---
-        themeToggleBtn.addEventListener('click', () => {
-            currentThemeIndex = (currentThemeIndex + 1) % allThemes.length; // 循环切换到下一个主题
-            updateThemeUI(); // 切换后更新 UI
-        });
-    </script>
-    <!-- *** END: Theme Toggle JavaScript *** -->
+<body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors duration-300">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
