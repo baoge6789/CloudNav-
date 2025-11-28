@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   Search, Plus, Upload, Moon, Sun, Menu,
   Trash2, Edit2, Loader2, Cloud, CheckCircle2, AlertCircle,
-  Pin, Settings, Lock, CloudCog, Github, GitFork, Info // 确保 Info 图标已导入
+  Pin, Settings, Lock, CloudCog, Github, GitFork
 } from 'lucide-react';
 import { LinkItem, Category, DEFAULT_CATEGORIES, INITIAL_LINKS, WebDavConfig, AIConfig } from './types';
-// import { parseBookmarks } from './services/bookmarkParser'; // 看起来没有被使用，暂时注释
+import { parseBookmarks } from './services/bookmarkParser';
 import Icon from './components/Icon';
 import LinkModal from './components/LinkModal';
 import AuthModal from './components/AuthModal';
@@ -14,7 +14,6 @@ import BackupModal from './components/BackupModal';
 import CategoryAuthModal from './components/CategoryAuthModal';
 import ImportModal from './components/ImportModal';
 import SettingsModal from './components/SettingsModal';
-import LinkCard from './components/LinkCard'; // 导入 LinkCard 组件
 
 // --- 配置项 ---
 const GITHUB_REPO_URL = 'https://github.com/sese972010/CloudNav-';
@@ -120,9 +119,7 @@ function App() {
   const [aiConfig, setAiConfig] = useState<AIConfig>(() => {
       const saved = localStorage.getItem(AI_CONFIG_KEY);
       if (saved) { try { return JSON.parse(saved); } catch (e) { console.error("Failed to parse AI config from localStorage", e); } }
-      // 注意：process.env.API_KEY 在前端代码中可能不会被正确解析，取决于您的构建工具配置。
-      // 生产环境中，通常需要通过环境变量注入或在构建时替换。
-      return { provider: 'gemini', apiKey: process.env.REACT_APP_API_KEY || '', baseUrl: '', model: 'gemini-2.5-flash' };
+      return { provider: 'gemini', apiKey: process.env.API_KEY || '', baseUrl: '', model: 'gemini-2.5-flash' };
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -141,7 +138,8 @@ function App() {
 
   // --- 新增状态：控制自定义上下文菜单 ---
   const [contextMenu, setContextMenu] = useState<{ link: LinkItem; x: number; y: number } | null>(null);
-  // longPressTimerRef 和 isLongPressActivatedRef 已经移动到 LinkCard 组件中
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressActivatedRef = useRef(false); // 标记是否长按已激活，用于阻止点击事件
 
   const loadFromLocal = () => {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -223,7 +221,7 @@ function App() {
                 if (data.links && data.links.length > 0) {
                     setLinks(data.links);
                     setCategories(data.categories || DEFAULT_CATEGORIES);
-                    localStorage.setItem(LOCAL_LOCAL_STORAGE_KEY, JSON.stringify(data));
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
                     return;
                 }
             }
@@ -421,8 +419,81 @@ function App() {
   }, [links, selectedCategory, searchQuery, isCategoryLocked]);
 
 
-  // renderLinkCard 函数被 LinkCard 组件取代，此处不再需要
-  // const renderLinkCard = (link: LinkItem) => { ... }
+  const renderLinkCard = (link: LinkItem) => {
+    // --- 新增：长按和右键点击事件处理 ---
+    const handleContextMenu = (e: React.MouseEvent) => {
+      e.preventDefault(); // 阻止浏览器默认右键菜单
+      e.stopPropagation(); // 阻止事件冒泡
+      setContextMenu({ link, x: e.clientX, y: e.clientY });
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+      // 仅处理左键点击的长按
+      if (e.button === 0) {
+        longPressTimerRef.current = setTimeout(() => {
+          isLongPressActivatedRef.current = true;
+          setContextMenu({ link, x: e.clientX, y: e.clientY });
+        }, 500); // 500ms 长按
+      }
+    };
+
+    const handleMouseUp = (e: React.MouseEvent) => {
+      clearTimeout(longPressTimerRef.current!);
+      if (isLongPressActivatedRef.current) {
+        e.preventDefault(); // 如果是长按激活的，阻止默认的点击行为（如跳转链接）
+        isLongPressActivatedRef.current = false;
+      }
+    };
+
+    const handleMouseLeave = (e: React.MouseEvent) => {
+      // 鼠标离开卡片时，如果正在计时，则取消长按
+      clearTimeout(longPressTimerRef.current!);
+      isLongPressActivatedRef.current = false;
+    };
+
+    // 阻止长按后的点击事件触发链接跳转
+    const handleClick = (e: React.MouseEvent) => {
+        if (isLongPressActivatedRef.current) {
+            e.preventDefault();
+            isLongPressActivatedRef.current = false; // 重置
+        }
+    };
+
+    return (
+      <a
+          key={link.id}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative flex items-center gap-3 p-3 bg-card-bg rounded-xl border border-border-default shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+          title={link.description || link.url}
+          onContextMenu={handleContextMenu} // 右键点击
+          onMouseDown={handleMouseDown}     // 左键长按开始
+          onMouseUp={handleMouseUp}         // 左键长按结束或短按
+          onMouseLeave={handleMouseLeave}   // 鼠标离开
+          onClick={handleClick}             // 阻止长按后的默认点击
+      >
+          {/* Compact Icon */}
+          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold uppercase shrink-0">
+              {link.icon ? <img src={link.icon} alt={link.title.charAt(0)} className="w-5 h-5"/> : link.title.charAt(0)}
+          </div>
+
+          {/* Text Content */}
+          <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm text-text-default truncate group-hover:text-primary transition-colors">
+                  {link.title}
+              </h3>
+              {link.description && (
+                 <div className="tooltip-custom absolute left-0 -top-8 w-max max-w-[200px] bg-black text-white text-xs p-2 rounded opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-20 pointer-events-none truncate">
+                    {link.description}
+                 </div>
+              )}
+          </div>
+
+          {/* 原有的悬停操作按钮 div 已移除 */}
+      </a>
+    );
+  };
 
 
   return (
@@ -634,17 +705,7 @@ function App() {
                         </h2>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                        {pinnedLinks.map(link => (
-                            <LinkCard
-                                key={link.id}
-                                link={link}
-                                onTogglePin={togglePin}
-                                onEdit={handleEditLinkFromMenu}
-                                onDelete={handleDeleteLink}
-                                onShowContextMenu={(l, x, y) => setContextMenu({ link: l, x, y })}
-                                closeContextMenu={closeContextMenu}
-                            />
-                        ))}
+                        {pinnedLinks.map(link => renderLinkCard(link))}
                     </div>
                 </section>
             )}
@@ -696,17 +757,7 @@ function App() {
                     </div>
                  ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                        {displayedLinks.map(link => (
-                            <LinkCard
-                                key={link.id}
-                                link={link}
-                                onTogglePin={togglePin}
-                                onEdit={handleEditLinkFromMenu}
-                                onDelete={handleDeleteLink}
-                                onShowContextMenu={(l, x, y) => setContextMenu({ link: l, x, y })}
-                                closeContextMenu={closeContextMenu}
-                            />
-                        ))}
+                        {displayedLinks.map(link => renderLinkCard(link))}
                     </div>
                  )}
             </section>
@@ -731,7 +782,7 @@ function App() {
         onClose={() => { setIsModalOpen(false); setEditingLink(undefined); setPrefillLink(undefined); }}
         onSave={editingLink ? handleEditLinkForModal : handleAddLink} // 传递给模态框
         categories={categories}
-        initialData={editingLink || prefillLink}
+        initialData={editingLink || (prefillLink as LinkItem)}
         aiConfig={aiConfig}
       />
     </div>
