@@ -15,14 +15,14 @@
             colors: {
               // --- 使用 CSS 变量作为颜色定义 ---
               // 这些 Tailwind 类将从 HTML 元素上定义的 CSS 变量获取实际颜色值
-              // bg-default 和 text-default 现在将直接映射到 body 的颜色，以便组件可以继承
-              'bg-default': 'var(--color-bg-body)', // 页面整体背景
-              'text-default': 'var(--color-text-body)', // 页面整体文本颜色
+              // 注意：bg-default 和 text-default 仍然定义，以防组件需要继承页面主色
+              'bg-default': 'var(--color-bg-default)',
+              'text-default': 'var(--color-text-default)',
               'primary': 'var(--color-primary)',
               'secondary': 'var(--color-secondary)',
               'border-default': 'var(--color-border-default)',
               'accent': 'var(--color-accent)',
-              'card-bg': 'var(--color-card-bg)', // 用于卡片和面板背景
+              'card-bg': 'var(--color-card-bg)', // 用于卡片背景，深色模式和部分光线模式可能不同
               
               // 固定的语义化颜色 (不随主题变化，除非你为它们也定义了变量)
               success: '#48bb78', 
@@ -37,10 +37,6 @@
     <style>
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        /* *** 关键改动：body 的背景和文本颜色现在完全由 CSS 变量控制 *** */
-        background-color: var(--color-bg-body);
-        color: var(--color-text-body);
-        transition: background-color 0.3s, color 0.3s; /* 添加平滑过渡 */
       }
       /* Custom scrollbar for sidebar */
       .scrollbar-hide::-webkit-scrollbar {
@@ -58,11 +54,11 @@
 
       /* --- CSS 变量定义：根据不同的主题类切换颜色 --- */
 
-      /* 默认 HTML 样式 (作为 light-theme-default 的基础) */
+      /* 默认 HTML 样式：定义所有光线模式共用的页面背景和文本颜色，以及默认光线模式的组件颜色 */
       html {
-        /* 页面整体背景和文本颜色 */
-        --color-bg-body: #f9fafb; /* 对应 bg-gray-50 */
-        --color-text-body: #1e293b; /* 对应 text-slate-900 */
+        /* 页面背景和主文本颜色 (所有光线模式共享，与 body 的 bg-gray-50 对应) */
+        --color-bg-default: #f9fafb; /* bg-gray-50 */
+        --color-text-default: #1e293b; /* text-slate-900 */
         
         /* 默认光线模式的组件颜色 */
         --color-primary: #3b82f6; /* blue-500 */
@@ -72,10 +68,10 @@
         --color-card-bg: #ffffff; /* white */
       }
 
-      /* 深色模式：覆盖所有颜色变量 */
+      /* 深色模式：覆盖所有颜色变量，包括页面背景和文本 (与 body 的 dark:bg-slate-900 对应) */
       html.dark {
-        --color-bg-body: #0f172a; /* 对应 dark:bg-slate-900 */
-        --color-text-body: #f8fafc; /* 对应 dark:text-slate-50 */
+        --color-bg-default: #0f172a; /* slate-900 */
+        --color-text-default: #f8fafc; /* slate-50 */
         --color-primary: #60a5fa; /* blue-400 */
         --color-secondary: #94a3b8; /* slate-400 */
         --color-border-default: #475569; /* slate-700 */
@@ -83,10 +79,9 @@
         --color-card-bg: #1e293b; /* slate-800 */
       }
 
-      /* 光线模式 1: 默认 (light-theme-default) - 显式定义，与 html 默认值相同 */
+      /* 光线模式 1: 默认 (light-theme-default) - 仅需覆盖组件颜色，页面背景和文本继承自 `html` */
+      /* 这里的定义与 `html` 的默认值相同，但显式写出以便在主题列表中引用和理解 */
       html.light-theme-default {
-        --color-bg-body: #f9fafb;
-        --color-text-body: #1e293b;
         --color-primary: #3b82f6;
         --color-secondary: #64748b;
         --color-border-default: #e2e8f0;
@@ -94,10 +89,8 @@
         --color-card-bg: #ffffff;
       }
 
-      /* 光线模式 2: 暖色调 (Warm Light) */
+      /* 光线模式 2: 暖色调 (Warm Light) - 仅覆盖组件颜色 */
       html.light-theme-warm {
-        --color-bg-body: #fffbeb; /* 浅米色 */
-        --color-text-body: #4a2d0b; /* 深棕色 */
         --color-primary: #d97706; /* orange-700 */
         --color-secondary: #78350f; /* amber-900 */
         --color-border-default: #fde68a; /* amber-200 */
@@ -105,10 +98,8 @@
         --color-card-bg: #fef3c7; /* amber-100 */
       }
 
-      /* 光线模式 3: 冷色调 (Cool Light) */
+      /* 光线模式 3: 冷色调 (Cool Light) - 仅覆盖组件颜色 */
       html.light-theme-cool {
-        --color-bg-body: #f0f9ff; /* 浅蓝色 */
-        --color-text-body: #0c4a6e; /* 深蓝色 */
         --color-primary: #0ea5e9; /* sky-500 */
         --color-secondary: #38bdf8; /* sky-400 */
         --color-border-default: #bae6fd; /* sky-200 */
@@ -116,10 +107,8 @@
         --color-card-bg: #e0f2fe; /* sky-100 */
       }
 
-      /* 光线模式 4: 极简 (Minimal Light) */
+      /* 光线模式 4: 极简 (Minimal Light) - 仅覆盖组件颜色 */
       html.light-theme-minimal {
-        --color-bg-body: #ffffff; /* 纯白 */
-        --color-text-body: #374151; /* 灰黑色 */
         --color-primary: #10b981; /* emerald-500 */
         --color-secondary: #6b7280; /* gray-500 */
         --color-border-default: #d1d5db; /* gray-300 */
@@ -127,10 +116,8 @@
         --color-card-bg: #f9fafb; /* gray-50 */
       }
 
-      /* 光线模式 5: 柔和 (Soft Pastel) */
+      /* 光线模式 5: 柔和 (Soft Pastel) - 仅覆盖组件颜色 */
       html.light-theme-soft {
-        --color-bg-body: #fff0f5; /* 浅粉色 */
-        --color-text-body: #831843; /* 深粉色 */
         --color-primary: #f472b6; /* pink-400 */
         --color-secondary: #f9a8d4; /* pink-300 */
         --color-border-default: #fbcfe8; /* pink-200 */
@@ -156,8 +143,7 @@
     <!-- *** START: FOUC Prevention Script (防止页面加载时闪烁) *** -->
     <script>
         (function() {
-            // 定义所有主题，包括深色和所有光线模式。
-            // 这里的定义必须与 App.tsx 中的保持一致。
+            // 定义所有主题，包括深色和所有光线模式
             const allThemes = [
                 { class: 'light-theme-default', name: '默认光线模式', isDark: false },
                 { class: 'light-theme-warm', name: '暖色光线模式', isDark: false },
@@ -176,7 +162,7 @@
                 if (foundTheme) {
                     initialThemeClass = storedTheme;
                 } else {
-                    // 如果存储的主题不在列表中，则回退到默认，并清除无效存储
+                    // 如果存储的主题不在列表中，则回退到默认
                     localStorage.removeItem('theme');
                 }
             } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -193,10 +179,11 @@
 
 </head>
 <!-- 
-    *** 关键改动：body 标签上不再有 Tailwind 颜色类 ***
-    body 的背景和文本颜色现在完全由 `<html>` 上的主题类所定义的 CSS 变量控制。
+    body 的背景和文本颜色现在保持您提供的原始 Tailwind 类。
+    这些类会响应 `html` 上的 `dark` 类。
+    组件内部的颜色将通过 CSS 变量和 Tailwind 的 `bg-card-bg`, `text-primary` 等类来控制。
 -->
-<body>
+<body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors duration-300">
     <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
